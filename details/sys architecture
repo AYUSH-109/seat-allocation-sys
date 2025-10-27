@@ -1,0 +1,26 @@
+┌────────────────────────────────────────────┐
+│           FRONTEND (React/HTML/JS)         │
+│     - Upload Students Data                 │
+│     - Set Classroom Layout                 │
+│     - View Seat Allocation                 │
+│     - Download Seat Map (PDF)              │
+└─────────────────┬──────────────────────────┘
+                  │ (API Calls)
+                  │
+┌─────────────────▼──────────────────────────┐
+│            BACKEND (Node.js + Express)     │
+│     - Student Management API               │
+│     - Classroom Configuration API          │
+│     - Seat Allocation Algorithm            │
+│     - Generate Allocation Report           │
+└─────────────────┬──────────────────────────┘
+                  │ (Queries)
+                  │
+┌─────────────────▼──────────────────────────┐
+│         DATABASE (MySQL/MongoDB)           │
+│     - Students Table                       │
+│     - Classroom Layout                     │
+│     - Seat Allocations                     │
+│     - Broken Seats                         │
+│     - Paper Sets                           │
+└────────────────────────────────────────────┘
