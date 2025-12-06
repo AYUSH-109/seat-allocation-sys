@@ -1,4 +1,4 @@
-# Frontend & Backend Separation Guide
+# Frontend  Guide
 
 **Date**: December 6, 2025  
 **Status**: ✅ Setup Complete (Node.js Required)
