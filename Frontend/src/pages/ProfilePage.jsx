@@ -1,14 +1,25 @@
-import React, { useState } from 'react';
-import { User, LogOut, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { User, LogOut, CheckCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const ProfilePage = ({ showToast }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, updateProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || ''
   });
+
+  // Update form data when user changes
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || '',
+        email: user.email || ''
+      });
+    }
+  }, [user]);
 
   const recentActions = [
     { action: 'Uploaded student data', date: '2025-10-28', status: 'success' },
@@ -16,15 +27,34 @@ const ProfilePage = ({ showToast }) => {
     { action: 'Downloaded PDF report', date: '2025-10-26', status: 'success' }
   ];
 
-  const handleSave = () => {
-    showToast('Profile updated successfully!', 'success');
-    setIsEditing(false);
+  const handleSave = async () => {
+    setLoading(true);
+    const result = await updateProfile(formData.name, formData.email);
+    setLoading(false);
+
+    if (result.success) {
+      showToast(result.message || 'Profile updated successfully!', 'success');
+      setIsEditing(false);
+    } else {
+      showToast(result.error || 'Failed to update profile', 'error');
+    }
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     showToast('Logged out successfully', 'success');
   };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="animate-spin mx-auto mb-4" size={40} />
+          <p className="text-gray-600">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
@@ -37,10 +67,10 @@ const ProfilePage = ({ showToast }) => {
                 <User size={48} />
               </div>
               <div>
-                <h1 className="text-3xl font-bold">{user?.name}</h1>
-                <p className="text-blue-100">{user?.email}</p>
+                <h1 className="text-3xl font-bold">{user.name}</h1>
+                <p className="text-blue-100">{user.email}</p>
                 <span className="inline-block mt-2 px-3 py-1 bg-white/20 rounded-full text-sm">
-                  {user?.role}
+                  {user.role}
                 </span>
               </div>
             </div>
@@ -61,12 +91,26 @@ const ProfilePage = ({ showToast }) => {
                 <div className="flex gap-2">
                   <button
                     onClick={handleSave}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                    disabled={loading}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    Save
+                    {loading ? (
+                      <>
+                        <Loader2 className="animate-spin" size={16} />
+                        Saving...
+                      </>
+                    ) : (
+                      'Save'
+                    )}
                   </button>
                   <button
-                    onClick={() => setIsEditing(false)}
+                    onClick={() => {
+                      setIsEditing(false);
+                      setFormData({
+                        name: user.name || '',
+                        email: user.email || ''
+                      });
+                    }}
                     className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition"
                   >
                     Cancel
@@ -85,7 +129,7 @@ const ProfilePage = ({ showToast }) => {
                   disabled={!isEditing}
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg disabled:bg-gray-100 disabled:cursor-not-allowed focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
 
@@ -98,7 +142,7 @@ const ProfilePage = ({ showToast }) => {
                   disabled={!isEditing}
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg disabled:bg-gray-100 disabled:cursor-not-allowed focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
 
@@ -109,7 +153,7 @@ const ProfilePage = ({ showToast }) => {
                 <input
                   type="text"
                   disabled
-                  value={user?.role}
+                  value={user.role}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
                 />
               </div>

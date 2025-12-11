@@ -5,11 +5,11 @@ import { useAuth } from '../context/AuthContext';
 const SignupPage = ({ setCurrentPage, showToast }) => {
   const { signup } = useAuth();
   const [formData, setFormData] = useState({
-    name: '',
+    username: '',
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'Student'
+    role: 'STUDENT'
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -17,8 +17,12 @@ const SignupPage = ({ setCurrentPage, showToast }) => {
   const validateForm = () => {
     const newErrors = {};
     
-    if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters';
+    if (!formData.username || formData.username.length < 3) {
+      newErrors.username = 'Username must be at least 3 characters';
+    }
+    
+    if (formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
     }
     
     if (formData.password !== formData.confirmPassword) {
@@ -35,7 +39,12 @@ const SignupPage = ({ setCurrentPage, showToast }) => {
     if (!validateForm()) return;
     
     setLoading(true);
-    const result = await signup(formData);
+    const result = await signup({
+      username: formData.username,
+      email: formData.email,
+      password: formData.password,
+      role: formData.role
+    });
     setLoading(false);
     
     if (result.success) {
@@ -60,16 +69,19 @@ const SignupPage = ({ setCurrentPage, showToast }) => {
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Full Name
+              Username
             </label>
             <input
               type="text"
               required
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              value={formData.username}
+              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-              placeholder="John Doe"
+              placeholder="john_doe"
             />
+            {errors.username && (
+              <p className="text-red-500 text-sm mt-1">{errors.username}</p>
+            )}
           </div>
 
           <div>
@@ -129,9 +141,9 @@ const SignupPage = ({ setCurrentPage, showToast }) => {
               onChange={(e) => setFormData({ ...formData, role: e.target.value })}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
             >
-              <option value="Student">Student</option>
-              <option value="Admin">Admin</option>
-              <option value="Faculty">Faculty</option>
+              <option value="STUDENT">Student</option>
+              <option value="ADMIN">Admin</option>
+              <option value="FACULTY">Faculty</option>
             </select>
           </div>
 

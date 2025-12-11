@@ -6,6 +6,12 @@ const Navbar = ({ currentPage, setCurrentPage }) => {
   const { user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const handleLogout = async () => {
+    await logout();
+    setCurrentPage('landing');
+    setMobileMenuOpen(false);
+  };
+
   const navItems = user ? [
     { name: 'Dashboard', page: 'dashboard' },
     { name: 'Upload', page: 'upload' },
@@ -39,7 +45,7 @@ const Navbar = ({ currentPage, setCurrentPage }) => {
             ))}
             {user ? (
               <button
-                onClick={logout}
+                onClick={handleLogout}
                 className="flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition"
               >
                 <LogOut size={18} />
@@ -89,10 +95,7 @@ const Navbar = ({ currentPage, setCurrentPage }) => {
             ))}
             {user ? (
               <button
-                onClick={() => {
-                  logout();
-                  setMobileMenuOpen(false);
-                }}
+                onClick={handleLogout}
                 className="block w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
               >
                 Logout

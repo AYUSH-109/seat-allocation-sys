@@ -1,9 +1,24 @@
 from flask import Flask, render_template_string, jsonify, request
 from flask_cors import CORS
 from pathlib import Path
+from functools import wraps
+import sys
+import os
+
+# Add Backend folder to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'Backend'))
 
 # Import the seating algorithm
 from algo import SeatingAlgorithm
+
+# Import authentication service
+from auth_service import (
+    login as auth_login,
+    signup as auth_signup,
+    get_user_by_token,
+    update_user_profile,
+    verify_token
+)
 
 app = Flask(__name__)
 CORS(app)
@@ -11,6 +26,143 @@ CORS(app)
 # Load HTML template from the sibling index.html file
 HTML_TEMPLATE = Path(__file__).with_name('index.html').read_text()
 
+
+# ============================================================================
+# AUTHENTICATION MIDDLEWARE & HELPER FUNCTIONS
+# ============================================================================
+
+def token_required(f):
+    """Decorator to require valid token for protected routes."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        
+        # Check for token in headers
+        if 'Authorization' in request.headers:
+            auth_header = request.headers['Authorization']
+            try:
+                token = auth_header.split(" ")[1]
+            except IndexError:
+                return jsonify({'error': 'Invalid token format'}), 401
+        
+        if not token:
+            return jsonify({'error': 'Token missing'}), 401
+        
+        # Verify token
+        payload = verify_token(token)
+        if not payload:
+            return jsonify({'error': 'Invalid or expired token'}), 401
+        
+        # Pass user_id to the route
+        request.user_id = payload['user_id']
+        return f(*args, **kwargs)
+    
+    return decorated
+
+
+# ============================================================================
+# AUTHENTICATION ENDPOINTS
+# ============================================================================
+
+@app.route('/api/auth/signup', methods=['POST'])
+def signup():
+    """Signup endpoint: create a new user account."""
+    try:
+        data = request.get_json()
+        username = data.get('username', '').strip()
+        email = data.get('email', '').strip()
+        password = data.get('password', '')
+        role = data.get('role', 'STUDENT')
+        
+        success, message = auth_signup(username, email, password, role)
+        
+        if success:
+            return jsonify({'success': True, 'message': message}), 201
+        else:
+            return jsonify({'success': False, 'error': message}), 400
+    
+    except Exception as e:
+        return jsonify({'error': f'Signup failed: {str(e)}'}), 500
+
+
+@app.route('/api/auth/login', methods=['POST'])
+def login():
+    """Login endpoint: authenticate user and return token."""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip()
+        password = data.get('password', '')
+        
+        success, user_data, result = auth_login(email, password)
+        
+        if success:
+            # result is the token
+            return jsonify({
+                'success': True,
+                'token': result,
+                'user': user_data
+            }), 200
+        else:
+            # result is the error message
+            return jsonify({'success': False, 'error': result}), 401
+    
+    except Exception as e:
+        return jsonify({'error': f'Login failed: {str(e)}'}), 500
+
+
+@app.route('/api/auth/profile', methods=['GET'])
+@token_required
+def get_profile():
+    """Get current user profile (protected route)."""
+    try:
+        user = get_user_by_token(request.headers['Authorization'].split(" ")[1])
+        
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        return jsonify({
+            'success': True,
+            'user': user
+        }), 200
+    
+    except Exception as e:
+        return jsonify({'error': f'Failed to fetch profile: {str(e)}'}), 500
+
+
+@app.route('/api/auth/profile', methods=['PUT'])
+@token_required
+def update_profile():
+    """Update current user profile (protected route)."""
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        email = data.get('email')
+        
+        success, message = update_user_profile(request.user_id, username, email)
+        
+        if success:
+            user = get_user_by_token(request.headers['Authorization'].split(" ")[1])
+            return jsonify({
+                'success': True,
+                'message': message,
+                'user': user
+            }), 200
+        else:
+            return jsonify({'success': False, 'error': message}), 400
+    
+    except Exception as e:
+        return jsonify({'error': f'Failed to update profile: {str(e)}'}), 500
+
+
+@app.route('/api/auth/logout', methods=['POST'])
+def logout():
+    """Logout endpoint (client-side token removal)."""
+    return jsonify({'success': True, 'message': 'Logged out successfully'}), 200
+
+
+# ============================================================================
+# SEATING ALGORITHM ENDPOINTS
+# ============================================================================
 
 @app.route('/')
 def index():
