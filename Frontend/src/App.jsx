@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Toast from './components/Toast';
@@ -10,6 +11,8 @@ import ProfilePage from './pages/ProfilePage';
 import DashboardPage from './pages/DashboardPage';
 import UploadPage from './pages/UploadPage';
 import LayoutPage from './pages/LayoutPage';
+import FeedbackPage from './pages/FeedbackPage';
+import AboutusPage from './pages/AboutusPage';
 
 const App = () => {
   const [currentPage, setCurrentPage] = useState('landing');
@@ -39,37 +42,43 @@ const App = () => {
         return <UploadPage showToast={showToast} />;
       case 'layout':
         return <LayoutPage showToast={showToast} />;
+      case 'feedback':
+        return <FeedbackPage showToast={showToast} />;
+      case 'aboutus':
+        return <AboutusPage showToast={showToast} />;
       default:
         return <LandingPage setCurrentPage={setCurrentPage} />;
     }
   };
 
   return (
-    <AuthProvider>
-      <div className="min-h-screen flex flex-col">
-        <Navbar currentPage={currentPage} setCurrentPage={setCurrentPage} />
-        <main className="flex-1">
-          {renderPage()}
-        </main>
-        <Footer />
-        {toast && <Toast message={toast.message} type={toast.type} onClose={closeToast} />}
-      </div>
-      <style>{`
-        @keyframes slide-in {
-          from {
-            transform: translateX(100%);
-            opacity: 0;
+    <ThemeProvider>
+      <AuthProvider>
+        <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900 transition-colors duration-300">
+          <Navbar currentPage={currentPage} setCurrentPage={setCurrentPage} />
+          <main className="flex-1">
+            {renderPage()}
+          </main>
+          <Footer />
+          {toast && <Toast message={toast.message} type={toast.type} onClose={closeToast} />}
+        </div>
+        <style>{`
+          @keyframes slide-in {
+            from {
+              transform: translateX(100%);
+              opacity: 0;
+            }
+            to {
+              transform: translateX(0);
+              opacity: 1;
+            }
           }
-          to {
-            transform: translateX(0);
-            opacity: 1;
+          .animate-slide-in {
+            animation: slide-in 0.3s ease-out;
           }
-        }
-        .animate-slide-in {
-          animation: slide-in 0.3s ease-out;
-        }
-      `}</style>
-    </AuthProvider>
+        `}</style>
+      </AuthProvider>
+    </ThemeProvider>
   );
 };
 

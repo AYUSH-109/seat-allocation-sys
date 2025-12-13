@@ -57,11 +57,11 @@ const ProfilePage = ({ showToast }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4 transition-colors duration-300">
       <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden transition-colors duration-300">
           {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-8 text-white">
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 p-8 text-white">
             <div className="flex items-center gap-6">
               <div className="bg-white/20 p-4 rounded-full">
                 <User size={48} />
@@ -79,11 +79,11 @@ const ProfilePage = ({ showToast }) => {
           {/* Profile Information */}
           <div className="p-8">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Profile Information</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Profile Information</h2>
               {!isEditing ? (
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                  className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition"
                 >
                   Edit Profile
                 </button>
@@ -111,7 +111,7 @@ const ProfilePage = ({ showToast }) => {
                         email: user.email || ''
                       });
                     }}
-                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition"
+                    className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-700 transition"
                   >
                     Cancel
                   </button>
@@ -121,7 +121,7 @@ const ProfilePage = ({ showToast }) => {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Full Name
                 </label>
                 <input
@@ -129,12 +129,12 @@ const ProfilePage = ({ showToast }) => {
                   disabled={!isEditing}
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg disabled:bg-gray-100 disabled:cursor-not-allowed focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Email Address
                 </label>
                 <input
@@ -142,40 +142,40 @@ const ProfilePage = ({ showToast }) => {
                   disabled={!isEditing}
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg disabled:bg-gray-100 disabled:cursor-not-allowed focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Role
                 </label>
                 <input
                   type="text"
                   disabled
                   value={user.role}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700 cursor-not-allowed text-gray-900 dark:text-white transition"
                 />
               </div>
             </div>
 
             {/* Recent Actions */}
             <div className="mt-12">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">Recent Activity</h3>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Recent Activity</h3>
               <div className="space-y-3">
                 {recentActions.map((action, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                    className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg transition-colors duration-300"
                   >
                     <div className="flex items-center gap-3">
-                      <CheckCircle className="text-green-500" size={20} />
+                      <CheckCircle className="text-green-500 dark:text-green-400" size={20} />
                       <div>
-                        <p className="font-medium text-gray-900">{action.action}</p>
-                        <p className="text-sm text-gray-500">{action.date}</p>
+                        <p className="font-medium text-gray-900 dark:text-white">{action.action}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{action.date}</p>
                       </div>
                     </div>
-                    <span className="text-xs px-3 py-1 bg-green-100 text-green-700 rounded-full">
+                    <span className="text-xs px-3 py-1 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded-full">
                       {action.status}
                     </span>
                   </div>
@@ -184,10 +184,10 @@ const ProfilePage = ({ showToast }) => {
             </div>
 
             {/* Logout Button */}
-            <div className="mt-8 pt-8 border-t border-gray-200">
+            <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-2 px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+                className="flex items-center gap-2 px-6 py-3 bg-red-500 dark:bg-red-600 text-white rounded-lg hover:bg-red-600 dark:hover:bg-red-700 transition"
               >
                 <LogOut size={20} />
                 Logout from Account

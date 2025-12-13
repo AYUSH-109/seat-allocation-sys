@@ -7,7 +7,12 @@ const Toast = ({ message, type, onClose }) => {
     return () => clearTimeout(timer);
   }, [onClose]);
 
-  const bgColor = type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
+  const bgColor = type === 'success' 
+    ? 'bg-green-500 dark:bg-green-600' 
+    : type === 'error' 
+    ? 'bg-red-500 dark:bg-red-600' 
+    : 'bg-blue-500 dark:bg-blue-600';
+    
   const Icon = type === 'success' ? CheckCircle : AlertCircle;
 
   return (

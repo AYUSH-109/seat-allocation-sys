@@ -39,7 +39,6 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       setUser(data.user);
-      
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message || 'Login failed' };
@@ -150,7 +149,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout, getProfile, updateProfile, loading }}>
+     <AuthContext.Provider value={{ user, login, signup, logout, getProfile, updateProfile, loading }}>
       {children}
     </AuthContext.Provider>
   );

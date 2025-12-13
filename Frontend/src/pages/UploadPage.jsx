@@ -33,18 +33,18 @@ const UploadPage = ({ showToast }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4 transition-colors duration-300">
       <div className="max-w-3xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 transition-colors duration-300">
           <div className="text-center mb-8">
-            <div className="bg-blue-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="bg-blue-600 dark:bg-blue-500 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
               <Upload className="text-white" size={32} />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900">Upload Student Data</h1>
-            <p className="text-gray-600 mt-2">Upload a CSV file with student information</p>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Upload Student Data</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">Upload a CSV file with student information</p>
           </div>
 
-          <div className="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center hover:border-blue-500 transition">
+          <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-12 text-center hover:border-blue-500 dark:hover:border-blue-400 transition bg-gray-50 dark:bg-gray-700/50">
             <input
               type="file"
               accept=".csv"
@@ -53,17 +53,17 @@ const UploadPage = ({ showToast }) => {
               id="file-upload"
             />
             <label htmlFor="file-upload" className="cursor-pointer">
-              <Upload className="text-gray-400 mx-auto mb-4" size={48} />
-              <p className="text-lg font-medium text-gray-700 mb-2">
+              <Upload className="text-gray-400 dark:text-gray-500 mx-auto mb-4" size={48} />
+              <p className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
                 {file ? file.name : 'Click to upload or drag and drop'}
               </p>
-              <p className="text-sm text-gray-500">CSV files only (max 10MB)</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">CSV files only (max 10MB)</p>
             </label>
           </div>
 
           {file && (
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-              <p className="text-sm text-gray-700">
+            <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+              <p className="text-sm text-gray-700 dark:text-gray-300">
                 <strong>Selected file:</strong> {file.name} ({(file.size / 1024).toFixed(2)} KB)
               </p>
             </div>
@@ -72,7 +72,7 @@ const UploadPage = ({ showToast }) => {
           <button
             onClick={handleUpload}
             disabled={!file || uploading}
-            className="w-full mt-6 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full mt-6 bg-blue-600 dark:bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 dark:hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {uploading ? (
               <>
@@ -84,13 +84,10 @@ const UploadPage = ({ showToast }) => {
             )}
           </button>
 
-          <div className="mt-8 p-6 bg-gray-50 rounded-lg">
-            <h3 className="font-semibold text-gray-900 mb-3">CSV Format Requirements:</h3>
-            <ul className="text-sm text-gray-600 space-y-2">
-              <li>• Include headers: Student ID, Name, Email, Course, Semester</li>
-              <li>• Use comma-separated values</li>
-              <li>• Ensure no duplicate student IDs</li>
-              <li>• Maximum 5000 students per file</li>
+          <div className="mt-8 p-6 bg-gray-50 dark:bg-gray-700 rounded-lg transition-colors duration-300">
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-3">CSV Format Requirements:</h3>
+            <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+              <li>• Include headers: Student ID and Name</li>
             </ul>
           </div>
         </div>
