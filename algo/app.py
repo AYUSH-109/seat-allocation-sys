@@ -1,357 +1,10 @@
-# # app.py — FULL, CONTRACT-SAFE, MERGED SERVER
-
-# import os
-# import sys
-# import json
-# import time
-# import sqlite3
-# from pathlib import Path
-# from functools import wraps
-# from typing import Dict, List, Tuple
-
-# from flask import Flask, request, jsonify, render_template_string, send_file
-# from flask_cors import CORS
-# app = Flask(__name__)
-# CORS(app, supports_credentials=True)
-
-
-# # ---------------- PATH SETUP ---------------- #
-
-# BASE_DIR = Path(__file__).parent.resolve()
-# DB_PATH = BASE_DIR / "demo.db"
-# INDEX_HTML = BASE_DIR / "index.html"
-
-# sys.path.insert(0, str(BASE_DIR))
-
-# # ---------------- IMPORTS ---------------- #
-
-# from student_parser import StudentDataParser
-# from algo import SeatingAlgorithm
-
-# try:
-#     sys.path.insert(0, str(BASE_DIR.parent / "Backend"))
-#     from auth_service import signup as auth_signup, login as auth_login, verify_token, get_user_by_token, update_user_profile
-# except Exception:
-#     auth_signup = auth_login = verify_token = get_user_by_token = update_user_profile = None
-
-# # ---------------- APP ---------------- #
-
-# app = Flask(__name__)
-# CORS(app, resources={r"/api/*": {"origins": "*"}})
-
-# MAX_FILE_SIZE = 50 * 1024 * 1024
-# CACHE_TTL_SECONDS = 3600
-
-# # ---------------- DB BOOTSTRAP ---------------- #
-
-# def ensure_demo_db():
-#     conn = sqlite3.connect(DB_PATH)
-#     cur = conn.cursor()
-
-#     cur.execute("""
-#         CREATE TABLE IF NOT EXISTS uploads (
-#             id INTEGER PRIMARY KEY AUTOINCREMENT,
-#             batch_id TEXT UNIQUE,
-#             batch_name TEXT,
-#             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-#         )
-#     """)
-
-#     cur.execute("""
-#         CREATE TABLE IF NOT EXISTS students (
-#             id INTEGER PRIMARY KEY AUTOINCREMENT,
-#             upload_id INTEGER,
-#             batch_id TEXT,
-#             batch_name TEXT,
-#             enrollment TEXT NOT NULL,
-#             name TEXT,
-#             inserted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-#             UNIQUE(upload_id, enrollment)
-#         )
-#     """)
-
-#     cur.execute("""
-#         CREATE TABLE IF NOT EXISTS allocations (
-#             id INTEGER PRIMARY KEY AUTOINCREMENT,
-#             job_id TEXT,
-#             upload_id INTEGER,
-#             enrollment TEXT,
-#             room_id TEXT,
-#             seat_id TEXT,
-#             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-#         )
-#     """)
-
-#     conn.commit()
-#     conn.close()
-
-# ensure_demo_db()
-
-# # ---------------- AUTH DECORATOR ---------------- #
-
-# def token_required(f):
-#     @wraps(f)
-#     def wrapper(*args, **kwargs):
-#         if verify_token is None:
-#             return jsonify({"error": "Auth not configured"}), 501
-
-#         header = request.headers.get("Authorization", "")
-#         if not header.startswith("Bearer "):
-#             return jsonify({"error": "Missing token"}), 401
-
-#         token = header.split(" ", 1)[1]
-#         payload = verify_token(token)
-#         if not payload:
-#             return jsonify({"error": "Invalid token"}), 401
-
-#         request.user_id = payload.get("user_id")
-#         return f(*args, **kwargs)
-#     return wrapper
-
-# # ---------------- CACHE ---------------- #
-
-# def cleanup_cache():
-#     if not hasattr(app, "upload_cache"):
-#         app.upload_cache = {}
-#     now = time.time()
-#     app.upload_cache = {
-#         k: v for k, v in app.upload_cache.items()
-#         if now - v["timestamp"] < CACHE_TTL_SECONDS
-#     }
-
-# # ---------------- HELPERS ---------------- #
-
-# def parse_int_dict(val):
-#     if isinstance(val, dict):
-#         return {int(k): int(v) for k, v in val.items()}
-#     if isinstance(val, str):
-#         out = {}
-#         for p in val.split(","):
-#             if ":" in p:
-#                 try:
-#                     k, v = p.split(":", 1)
-#                     out[int(k.strip())] = int(v.strip())
-#                 except:
-#                     pass
-#         return out
-#     return {}
-
-# def parse_str_dict(val):
-#     if isinstance(val, dict):
-#         return {int(k): str(v) for k, v in val.items()}
-#     if isinstance(val, str):
-#         out = {}
-#         for p in val.split(","):
-#             if ":" in p:
-#                 try:
-#                     k, v = p.split(":", 1)
-#                     out[int(k.strip())] = v.strip()
-#                 except:
-#                     pass
-#         return out
-#     return {}
-
-# # ---------------- AUTH ROUTES ---------------- #
-
-# @app.route("/api/auth/signup", methods=["POST"])
-# def signup():
-#     data = request.get_json(force=True)
-#     ok, msg = auth_signup(
-#         data.get("username"),
-#         data.get("email"),
-#         data.get("password"),
-#         data.get("role", "STUDENT"),
-#     )
-#     return jsonify({"success": ok, "message": msg}), 201 if ok else 400
-
-# @app.route("/api/auth/login", methods=["POST"])
-# def login():
-#     data = request.get_json(force=True)
-#     ok, user, token = auth_login(data.get("email"), data.get("password"))
-#     if not ok:
-#         return jsonify({"error": token}), 401
-#     return jsonify({"token": token, "user": user})
-
-# # ---------------- PARSER ROUTES (RESTORED) ---------------- #
-
-# @app.route("/api/upload", methods=["POST"])
-# @token_required
-# def api_upload():
-#     cleanup_cache()
-
-#     if "file" not in request.files:
-#         return jsonify({"error": "No file"}), 400
-
-#     f = request.files["file"]
-#     file_bytes = f.read()
-
-#     if len(file_bytes) > MAX_FILE_SIZE:
-#         return jsonify({"error": "File too large"}), 413
-
-#     mode = int(request.form.get("mode", 2))
-#     batch_name = request.form.get("batch_name", "BATCH1")
-
-#     parser = StudentDataParser()
-#     pr = parser.parse_file(file_bytes, mode=mode, batch_name=batch_name)
-
-#     if not hasattr(app, "upload_cache"):
-#         app.upload_cache = {}
-
-#     app.upload_cache[pr.batch_id] = {
-#         "timestamp": time.time(),
-#         "batch_name": pr.batch_name,
-#         "data": pr.data[pr.batch_name],
-#     }
-
-#     return jsonify({
-#         "batch_id": pr.batch_id,
-#         "batch_name": pr.batch_name,
-#         "rows_total": pr.rows_total,
-#         "rows_extracted": pr.rows_extracted,
-#         "warnings": pr.warnings,
-#         "errors": pr.errors,
-#         "sample": pr.data[pr.batch_name][:5],
-#     })
-
-# @app.route("/api/commit-upload", methods=["POST"])
-# @token_required
-# def api_commit_upload():
-#     body = request.get_json(force=True)
-#     batch_id = body.get("batch_id")
-
-#     cleanup_cache()
-#     if batch_id not in getattr(app, "upload_cache", {}):
-#         return jsonify({"error": "Preview expired"}), 400
-
-#     cache = app.upload_cache[batch_id]
-#     rows = cache["data"]
-#     batch_name = cache["batch_name"]
-
-#     conn = sqlite3.connect(DB_PATH)
-#     cur = conn.cursor()
-
-#     cur.execute("INSERT OR IGNORE INTO uploads (batch_id, batch_name) VALUES (?,?)", (batch_id, batch_name))
-#     conn.commit()
-#     cur.execute("SELECT id FROM uploads WHERE batch_id=?", (batch_id,))
-#     upload_id = cur.fetchone()[0]
-
-#     inserted, skipped = 0, 0
-#     for r in rows:
-#         if isinstance(r, dict):
-#             enrollment = r.get("enrollmentNo")
-#             name = r.get("name")
-#         else:
-#             enrollment = str(r)
-#             name = None
-
-#         if not enrollment:
-#             skipped += 1
-#             continue
-
-#         try:
-#             cur.execute(
-#                 "INSERT INTO students (upload_id, batch_id, batch_name, enrollment, name) VALUES (?,?,?,?,?)",
-#                 (upload_id, batch_id, batch_name, enrollment, name),
-#             )
-#             inserted += 1
-#         except sqlite3.IntegrityError:
-#             skipped += 1
-
-#     conn.commit()
-#     conn.close()
-#     del app.upload_cache[batch_id]
-
-#     return jsonify({"inserted": inserted, "skipped": skipped})
-
-# @app.route("/api/students", methods=["GET"])
-# def api_students():
-#     conn = sqlite3.connect(DB_PATH)
-#     conn.row_factory = sqlite3.Row
-#     cur = conn.cursor()
-#     cur.execute("SELECT * FROM students ORDER BY id DESC LIMIT 1000")
-#     rows = [dict(r) for r in cur.fetchall()]
-#     conn.close()
-#     return jsonify(rows)
-
-# # ---------------- ALLOCATION ---------------- #
-
-# @app.route("/api/generate-seating", methods=["POST", "OPTIONS"])
-# @app.route("/api/generate-seating/", methods=["POST", "OPTIONS"])
-
-
-# def generate_seating():
-#     data = request.get_json(force=True)
-#     # ---------------- HARDEN INPUT TYPES ----------------
-#     start_rolls = data.get("start_rolls", {})
-#     if isinstance(start_rolls, str):
-#         # frontend accidentally sent CSV string instead of object
-#         start_rolls = {}
-
-#     batch_student_counts_raw = data.get("batch_student_counts", {})
-#     if isinstance(batch_student_counts_raw, str):
-#         # handled later via CSV parsing or ignored when use_demo_db=True
-#         pass
-# # ---------------------------------------------------
-
-#     algorithm = SeatingAlgorithm(
-#         rows=int(data.get("rows", 8)),
-#         cols=int(data.get("cols", 10)),
-#         num_batches=int(data.get("num_batches", 3)),
-#         block_width=int(data.get("block_width", 3)),
-#         batch_by_column=bool(data.get("batch_by_column", True)),
-#         enforce_no_adjacent_batches=bool(data.get("enforce_no_adjacent_batches", False)),
-#         broken_seats=[
-#             (int(r)-1, int(c)-1)
-#             for r,c in (p.split("-") for p in data.get("broken_seats","").split(",") if "-" in p)
-#         ],
-#         batch_student_counts=parse_int_dict(data.get("batch_student_counts")),
-#         batch_colors=parse_str_dict(data.get("batch_colors")),
-#         batch_labels=parse_str_dict(data.get("batch_labels")),
-#         start_rolls=parse_str_dict(data.get("start_rolls")),
-#         batch_roll_numbers=data.get("batch_roll_numbers") or {},
-#         serial_mode=data.get("serial_mode","per_batch"),
-#         serial_width=int(data.get("serial_width",0)),
-#     )
-
-#     algorithm.generate_seating()
-#     ok, errs = algorithm.validate_constraints()
-#     web = algorithm.to_web_format()
-#     web["validation"] = {"is_valid": ok, "errors": errs}
-#     web["constraints_status"] = algorithm.get_constraints_status()
-#     return jsonify(web)
-
-# @app.route("/api/constraints-status", methods=["POST"])
-# def constraints_status():
-#     data = request.get_json(force=True)
-#     algo = SeatingAlgorithm(
-#         rows=int(data.get("rows",8)),
-#         cols=int(data.get("cols",10)),
-#         num_batches=int(data.get("num_batches",3)),
-#         block_width=int(data.get("block_width",3)),
-#     )
-#     algo.generate_seating()
-#     return jsonify(algo.get_constraints_status())
-
-# # ---------------- INDEX ---------------- #
-
-# @app.route("/")
-# def index():
-#     if INDEX_HTML.exists():
-#         return render_template_string(INDEX_HTML.read_text())
-#     return "<h1>Seat Allocation API</h1>"
-
-# # ---------------- RUN ---------------- #
-
-# if __name__ == "__main__":
-#     print("Server running on http://127.0.0.1:5000")
-#     app.run(debug=True)
-
 
 # app.py — FINAL STABLE VERSION (NO ROUTE LOSS)
 
 import sys
 import os
 import time
+import io
 import json
 import sqlite3
 from pathlib import Path
@@ -475,91 +128,223 @@ def token_required(fn):
 # --------------------------------------------------
 # Upload + Commit
 # --------------------------------------------------
+
+@app.route("/api/upload-preview", methods=["POST"])
+def api_upload_preview():
+    """
+    Preview uploaded file without committing to database
+    Shows column detection and sample data
+    """
+    try:
+        print("\n" + "="*60)
+        print("👀 PREVIEW REQUEST")
+        print("="*60)
+        
+        if "file" not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+        
+        file = request.files["file"]
+        
+        if file.filename == '':
+            return jsonify({"error": "No file selected"}), 400
+        
+        print(f"📄 Preview file: {file.filename}")
+        
+        # Read file content
+        file_content = file.read()
+        
+        print(f"📦 File size: {len(file_content)} bytes")
+        
+        # Create parser and get preview
+        parser = StudentDataParser()
+        
+        # Use preview method - pass BytesIO
+        preview_data = parser.preview(io.BytesIO(file_content), max_rows=10)
+        
+        print(f"✅ Preview generated:")
+        print(f"  - Columns: {len(preview_data['columns'])}")
+        print(f"  - Total rows: {preview_data['totalRows']}")
+        print(f"  - Detected name: {preview_data['detectedColumns'].get('name')}")
+        print(f"  - Detected enrollment: {preview_data['detectedColumns'].get('enrollment')}")
+        print("="*60 + "\n")
+        
+        return jsonify({
+            "success": True,
+            **preview_data
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ PREVIEW ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
 @app.route("/api/upload", methods=["POST"])
 def api_upload():
-    file = request.files.get("file")
-    if not file:
-        return jsonify({"error": "No file"}), 400
-
-    parser = StudentDataParser()
-    pr = parser.parse_file(file.read(), mode=int(request.form.get("mode", 2)),
-                           batch_name=request.form.get("batch_name", "CSE"))
-
-    app.config.setdefault("UPLOAD_CACHE", {})[pr.batch_id] = pr
-
-    return jsonify({
-        "batch_id": pr.batch_id,
-        "batch_name": pr.batch_name,
-        "rows_total": pr.rows_total,
-        "rows_extracted": pr.rows_extracted,
-        "warnings": pr.warnings,
-        "sample": pr.data.get(pr.batch_name, [])[:5]
-    })
+    """
+    Upload and parse file, store in cache for preview
+    Returns parsed data with sample
+    """
+    try:
+        print("\n" + "="*60)
+        print("📥 UPLOAD REQUEST")
+        print("="*60)
+        
+        if "file" not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+        
+        file = request.files["file"]
+        
+        if file.filename == '':
+            return jsonify({"error": "No file selected"}), 400
+        
+        print(f"📄 File: {file.filename}")
+        
+        # Get parameters
+        mode = int(request.form.get("mode", 2))
+        batch_name = request.form.get("batch_name", "BATCH1")
+        name_col = request.form.get("nameColumn", None)
+        enrollment_col = request.form.get("enrollmentColumn", None)
+        
+        print(f"🔧 Mode: {mode}, Batch: {batch_name}")
+        if name_col:
+            print(f"📝 Custom name column: {name_col}")
+        if enrollment_col:
+            print(f"📝 Custom enrollment column: {enrollment_col}")
+        
+        # Read file content
+        file_content = file.read()
+        
+        print(f"📦 File size: {len(file_content)} bytes")
+        
+        # Parse file
+        parser = StudentDataParser()
+        
+        # Parse using BytesIO
+        pr = parser.parse_file(
+            io.BytesIO(file_content),
+            mode=mode,
+            batch_name=batch_name,
+            name_col=name_col,
+            enrollment_col=enrollment_col
+        )
+        
+        print(f"✅ Parsing successful")
+        print(f"📊 Extracted {pr.rows_extracted} students")
+        
+        # Cache the result
+        if not hasattr(app, 'config'):
+            app.config = {}
+        if 'UPLOAD_CACHE' not in app.config:
+            app.config['UPLOAD_CACHE'] = {}
+        
+        app.config['UPLOAD_CACHE'][pr.batch_id] = pr
+        
+        print(f"💾 Cached with ID: {pr.batch_id}")
+        print("="*60 + "\n")
+        
+        # Return response with sample data
+        return jsonify({
+            "success": True,
+            "batch_id": pr.batch_id,
+            "batch_name": pr.batch_name,
+            "rows_total": pr.rows_total,
+            "rows_extracted": pr.rows_extracted,
+            "warnings": pr.warnings,
+            "errors": pr.errors,
+            "sample": pr.data[pr.batch_name][:10],  # First 10 records
+            # Add full preview data too
+            "preview": {
+                "columns": list(pr.data[pr.batch_name][0].keys()) if pr.mode == 2 and pr.data[pr.batch_name] else [],
+                "totalRows": pr.rows_total,
+                "extractedRows": pr.rows_extracted
+            }
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ UPLOAD ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 
 @app.route("/api/commit-upload", methods=["POST"])
 def commit_upload():
-    batch_id = request.json.get("batch_id")
-    pr = app.config.get("UPLOAD_CACHE", {}).get(batch_id)
-    if not pr:
-        return jsonify({"error": "Preview expired"}), 400
-
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-
-    cur.execute("INSERT INTO uploads (batch_id, batch_name) VALUES (?, ?)",
-                (pr.batch_id, pr.batch_name))
-    upload_id = cur.lastrowid
-
-    for row in pr.data[pr.batch_name]:
-        enr = row["enrollmentNo"] if isinstance(row, dict) else row
-        name = row.get("name") if isinstance(row, dict) else None
-        cur.execute("""
-            INSERT OR IGNORE INTO students
-            (upload_id, batch_id, batch_name, enrollment, name)
-            VALUES (?, ?, ?, ?, ?)
-        """, (upload_id, pr.batch_id, pr.batch_name, enr, name))
-
-    conn.commit()
-    conn.close()
-
-    del app.config["UPLOAD_CACHE"][batch_id]
-    return jsonify({"success": True})
-
-# --------------------------------------------------
-# Helper functions
-# --------------------------------------------------
-def parse_int_dict(val):
-    """Parse integer dict from string or dict format"""
-    if isinstance(val, dict):
-        return {int(k): int(v) for k, v in val.items()}
-    if isinstance(val, str):
-        out = {}
-        for p in val.split(","):
-            if ":" in p:
-                try:
-                    k, v = p.split(":", 1)
-                    out[int(k.strip())] = int(v.strip())
-                except:
-                    pass
-        return out
-    return {}
-
-def parse_str_dict(val):
-    """Parse string dict from string or dict format"""
-    if isinstance(val, dict):
-        return {int(k): str(v) for k, v in val.items()}
-    if isinstance(val, str):
-        out = {}
-        for p in val.split(","):
-            if ":" in p:
-                try:
-                    k, v = p.split(":", 1)
-                    out[int(k.strip())] = v.strip()
-                except:
-                    pass
-        return out
-    return {}
+    """
+    Commit cached upload to database
+    """
+    try:
+        body = request.get_json(force=True)
+        batch_id = body.get("batch_id")
+        
+        print(f"\n💾 Committing upload: {batch_id}")
+        
+        # Get from cache
+        cache = app.config.get("UPLOAD_CACHE", {})
+        pr = cache.get(batch_id)
+        
+        if not pr:
+            return jsonify({"error": "Preview expired or invalid batch_id"}), 400
+        
+        # Insert into database
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        
+        cur.execute("INSERT INTO uploads (batch_id, batch_name) VALUES (?, ?)",
+                    (pr.batch_id, pr.batch_name))
+        upload_id = cur.lastrowid
+        
+        inserted = 0
+        skipped = 0
+        
+        for row in pr.data[pr.batch_name]:
+            if isinstance(row, dict):
+                enr = row.get("enrollmentNo")
+                name = row.get("name")
+            else:
+                enr = str(row)
+                name = None
+            
+            if not enr:
+                skipped += 1
+                continue
+            
+            try:
+                cur.execute("""
+                    INSERT INTO students
+                    (upload_id, batch_id, batch_name, enrollment, name)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (upload_id, pr.batch_id, pr.batch_name, enr, name))
+                inserted += 1
+            except sqlite3.IntegrityError:
+                skipped += 1
+        
+        conn.commit()
+        conn.close()
+        
+        # Remove from cache
+        del app.config['UPLOAD_CACHE'][batch_id]
+        
+        print(f"✅ Committed: {inserted} inserted, {skipped} skipped\n")
+        
+        return jsonify({
+            "success": True,
+            "inserted": inserted,
+            "skipped": skipped
+        })
+        
+    except Exception as e:
+        print(f"❌ COMMIT ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 # --------------------------------------------------
 # Allocation (MAIN ENDPOINT)

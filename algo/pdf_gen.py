@@ -41,9 +41,10 @@ def process_seating_data(json_data):
                 content = seat.get('display','UNALLOC')
                 bg = seat.get('color','#F3F4F6')
             else:
-                roll = seat.get('roll_number', '')
-                pset = seat.get('paper_set', '')
-                content = f"{roll}\nSET {pset}"
+                roll = seat.get("roll_number") or seat.get("display", "")
+                pset = str(seat.get("paper_set", "") or "")
+                content = f"{roll}\nSET {pset}".strip()
+
                 bg = seat.get('color')
                 
             matrix[r][c] = {'text': content, 'bg': bg}

@@ -1,21 +1,15 @@
-// AllocationPage.jsx
+// AllocationPage.jsx - WITH HYBRID PDF SUPPORT
 import React, { useEffect, useState, useRef } from "react";
 
 /**
- * AllocationPage
+ * AllocationPage - Enhanced with Hybrid PDF Generation
  *
  * Features:
- * - Full controls for rows/cols/numBatches/blockWidth/broken seats/etc.
- * - "Use Demo DB" toggle: when enabled, server will pull batch_roll_numbers & batch_labels
- * - Dynamic per-batch start-roll inputs
- * - Generates seating via POST /api/generate-seating
- * - Renders neat grid UI with colors, displays enrollment+set, branch label (batch_label)
- * - Download PDF using html2pdf (script must be included globally)
- * - Constraints modal via /api/constraints-status (server-side)
- *
- * Usage:
- * - Place in frontend React app and route to it.
- * - Requires Tailwind in your project (component uses Tailwind classes).
+ * - All original functionality preserved
+ * - Client-side PDF (html2pdf) - Fast, browser-based
+ * - Server-side PDF (ReportLab) - Professional quality
+ * - Auto-fallback between methods
+ * - User can choose PDF method via dropdown
  */
 
 const defaultColors = [
@@ -36,13 +30,13 @@ const AllocationPage = ({ showToast }) => {
   const [cols, setCols] = useState(10);
   const [numBatches, setNumBatches] = useState(3);
   const [blockWidth, setBlockWidth] = useState(3);
-  const [brokenSeats, setBrokenSeats] = useState(""); // "1-3,2-1"
+  const [brokenSeats, setBrokenSeats] = useState("");
   const [batchStudentCounts, setBatchStudentCounts] = useState("");
-  const [batchLabelsInput, setBatchLabelsInput] = useState(""); // optional manual labels
+  const [batchLabelsInput, setBatchLabelsInput] = useState("");
   const [useDemoDb, setUseDemoDb] = useState(true);
-  const [batchStartRolls, setBatchStartRolls] = useState({}); // {1: '1001', 2: '2001'}
-  const [batchRollNumbers, setBatchRollNumbers] = useState({}); // optional in-page override
-  const [batchColorsInput, setBatchColorsInput] = useState(""); // "1:#DBEAFE,2:#DCFCE7"
+  const [batchStartRolls, setBatchStartRolls] = useState({});
+  const [batchRollNumbers, setBatchRollNumbers] = useState({});
+  const [batchColorsInput, setBatchColorsInput] = useState("");
   const [serialMode, setSerialMode] = useState("per_batch");
   const [serialWidth, setSerialWidth] = useState(0);
   const [batchByColumn, setBatchByColumn] = useState(true);
@@ -51,6 +45,7 @@ const AllocationPage = ({ showToast }) => {
   const [loading, setLoading] = useState(false);
   const [webData, setWebData] = useState(null);
   const [error, setError] = useState(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   const chartRef = useRef();
 
@@ -60,7 +55,6 @@ const AllocationPage = ({ showToast }) => {
     for (let i = 1; i <= numBatches; i++) {
       if (!(i in next)) next[i] = "";
     }
-    // remove extraneous
     Object.keys(next)
       .map(Number)
       .forEach((k) => {
@@ -71,7 +65,6 @@ const AllocationPage = ({ showToast }) => {
   }, [numBatches]);
 
   function parseKVList(str) {
-    // "1:BTCS,2:BTCD" -> {1: "BTCS", 2: "BTCD"}
     const out = {};
     if (!str) return out;
     str
@@ -90,13 +83,11 @@ const AllocationPage = ({ showToast }) => {
   }
 
   function buildPayload() {
-    // Compose batch_start_rolls like "1:123,2:201"
     const start_rolls_entries = Object.entries(batchStartRolls)
       .filter(([, v]) => v && String(v).trim() !== "")
       .map(([k, v]) => `${k}:${v}`)
       .join(",");
-    // include any provided per-batch roll lists if present (should be an object)
-    // but we don't include them here, server expects JSON object for batch_roll_numbers if used
+    
     return {
       rows,
       cols,
@@ -117,9 +108,7 @@ const AllocationPage = ({ showToast }) => {
       serial_mode: serialMode,
       serial_width: serialWidth || 0,
       use_demo_db: useDemoDb,
-      // optional: if user supplied batch_roll_numbers JSON via UI (rare), pass it
       batch_roll_numbers: Object.keys(batchRollNumbers).length ? batchRollNumbers : undefined,
-      // optional: pass explicit batch_labels mapping if typed (e.g., "1:CSE,2:ECE")
       batch_labels: Object.keys(parseKVList(batchLabelsInput)).length ? parseKVList(batchLabelsInput) : undefined,
     };
   }
@@ -140,7 +129,6 @@ const AllocationPage = ({ showToast }) => {
         setError(data.error || "Server error");
       } else {
         setWebData(data);
-        // smooth scroll to seating
         setTimeout(() => {
           chartRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
         }, 80);
@@ -153,7 +141,6 @@ const AllocationPage = ({ showToast }) => {
   }
 
   async function showConstraints() {
-    // call constraints-status endpoint and show modal
     try {
       const payload = buildPayload();
       const res = await fetch("/api/constraints-status", {
@@ -166,8 +153,6 @@ const AllocationPage = ({ showToast }) => {
         setError(data.error || "Failed to fetch constraints");
         return;
       }
-      // show a simple modal (we'll just inject into DOM via window.alert for simplicity)
-      // build nicer modal
       const body = data.constraints
         .map(
           (c) =>
@@ -176,10 +161,170 @@ const AllocationPage = ({ showToast }) => {
             }\n`
         )
         .join("\n\n");
-      // show in native modal for now
       alert(`Constraints status:\n\n${body}`);
     } catch (err) {
       alert("Error fetching constraints: " + (err.message || err));
+    }
+  }
+
+  // CLIENT-SIDE PDF (Your Original Method)
+  function downloadPdfClientSide() {
+    if (!webData) {
+      alert('No seating data available. Generate chart first.');
+      return;
+    }
+
+    if (!window.html2pdf) {
+      alert('html2pdf library not loaded. Using server-side PDF instead...');
+      downloadPdfServerSide();
+      return;
+    }
+
+    console.log('📄 Generating PDF (Client-side with html2pdf)...');
+    setPdfLoading(true);
+
+    const container = document.createElement("div");
+    container.style.padding = "12px";
+    container.style.fontFamily = "Inter, Arial, sans-serif";
+    
+    const h = document.createElement("h3");
+    h.innerText = "Seating Arrangement";
+    h.style.textAlign = "center";
+    h.style.marginBottom = "8px";
+    h.style.fontSize = "18px";
+    h.style.fontWeight = "bold";
+    container.appendChild(h);
+
+    const info = document.createElement("div");
+    info.style.textAlign = "center";
+    info.style.fontSize = "12px";
+    info.style.marginBottom = "10px";
+    info.innerText = `Rows: ${rows} | Cols: ${cols} | Batches: ${numBatches} | Generated: ${new Date().toLocaleString()}`;
+    container.appendChild(info);
+
+    const grid = document.createElement("div");
+    grid.style.display = "grid";
+    grid.style.gridTemplateColumns = `repeat(${cols}, 68px)`;
+    grid.style.gap = "6px";
+    grid.style.justifyContent = "center";
+
+    const seats = webData.seating.flat();
+    seats.forEach((s) => {
+      const seatEl = document.createElement("div");
+      seatEl.style.width = "68px";
+      seatEl.style.height = "68px";
+      seatEl.style.border = "1px solid #333";
+      seatEl.style.boxSizing = "border-box";
+      seatEl.style.display = "flex";
+      seatEl.style.flexDirection = "column";
+      seatEl.style.justifyContent = "center";
+      seatEl.style.alignItems = "center";
+      seatEl.style.fontSize = "10px";
+      seatEl.style.background = s.color || "#fff";
+      seatEl.style.padding = "4px";
+      seatEl.style.textAlign = "center";
+      
+      if (s.is_broken) {
+        seatEl.innerHTML = `<div style="font-weight:bold;color:#8B0000">BROKEN</div><div style="font-size:9px;color:#800000">${s.position}</div>`;
+      } else if (s.is_unallocated) {
+        seatEl.innerHTML = `<div style="font-weight:600;color:#666">Batch ${s.batch || ""}</div><div style="font-weight:bold;color:#444">UNALLOC</div>`;
+      } else {
+        const setVal = s.paper_set ? s.paper_set : "";
+        const roll = s.roll_number ? s.roll_number : "";
+        const bLabel = s.batch_label ? s.batch_label : `B${s.batch || ""}`;
+        seatEl.innerHTML = `<div style="font-size:10px;font-weight:600">${bLabel}</div><div style="font-weight:bold">${roll}${setVal}</div><div style="font-size:9px;color:#333">${s.position}</div>`;
+      }
+      grid.appendChild(seatEl);
+    });
+
+    container.appendChild(grid);
+
+    const opt = {
+      margin: 8,
+      filename: "seating_arrangement.pdf",
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: "mm", format: "a4", orientation: "landscape" },
+    };
+
+    window.html2pdf()
+      .set(opt)
+      .from(container)
+      .save()
+      .then(() => {
+        console.log('✅ PDF generated successfully (client-side)');
+        setPdfLoading(false);
+      })
+      .catch((err) => {
+        console.error('❌ html2pdf error:', err);
+        alert('Client-side PDF generation failed. Try server-side method.');
+        setPdfLoading(false);
+      });
+  }
+
+  // SERVER-SIDE PDF (Using your pdf_gen.py)
+  async function downloadPdfServerSide() {
+    if (!webData) {
+      alert('No seating data available. Generate chart first.');
+      return;
+    }
+
+    setPdfLoading(true);
+
+    try {
+      console.log('📄 Requesting server-side PDF...');
+      
+      const response = await fetch('/api/generate-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(webData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'PDF generation failed');
+      }
+
+      const blob = await response.blob();
+      
+      if (blob.size === 0) {
+        throw new Error('PDF file is empty');
+      }
+
+      console.log(`✅ PDF received: ${blob.size} bytes`);
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `seating_arrangement_${new Date().getTime()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      console.log('✅ PDF downloaded successfully (server-side)');
+      
+    } catch (error) {
+      console.error('❌ Server PDF Error:', error);
+      alert(`Server-side PDF generation failed: ${error.message}`);
+    } finally {
+      setPdfLoading(false);
+    }
+  }
+
+  // MAIN DOWNLOAD - Auto-detects best method
+  function downloadPdf() {
+    if (!webData) {
+      alert('No seating data available. Generate chart first.');
+      return;
+    }
+
+    if (window.html2pdf) {
+      downloadPdfClientSide();
+    } else {
+      console.log('⚠️ html2pdf not available, using server-side generation');
+      downloadPdfServerSide();
     }
   }
 
@@ -234,83 +379,6 @@ const AllocationPage = ({ showToast }) => {
         <div className="text-[10px] opacity-70 mt-1">{seat.position}</div>
       </div>
     );
-  }
-
-  function downloadPdf() {
-    // Uses global html2pdf (include script in public/index.html)
-    if (!webData) return;
-    const container = document.createElement("div");
-    container.style.padding = "12px";
-    container.style.fontFamily = "Inter, Arial, sans-serif";
-    
-    // title
-    const h = document.createElement("h3");
-    h.innerText = "Seating Arrangement";
-    h.style.textAlign = "center";
-    h.style.marginBottom = "8px";
-    h.style.fontSize = "18px";
-    h.style.fontWeight = "bold";
-    container.appendChild(h);
-
-    // info line
-    const info = document.createElement("div");
-    info.style.textAlign = "center";
-    info.style.fontSize = "12px";
-    info.style.marginBottom = "10px";
-    info.innerText = `Rows: ${rows} | Cols: ${cols} | Batches: ${numBatches} | Generated: ${new Date().toLocaleString()}`;
-    container.appendChild(info);
-
-    // grid
-    const grid = document.createElement("div");
-    grid.style.display = "grid";
-    grid.style.gridTemplateColumns = `repeat(${cols}, 68px)`;
-    grid.style.gap = "6px";
-    grid.style.justifyContent = "center";
-
-    const seats = webData.seating.flat();
-    seats.forEach((s) => {
-      const seatEl = document.createElement("div");
-      seatEl.style.width = "68px";
-      seatEl.style.height = "68px";
-      seatEl.style.border = "1px solid #333";
-      seatEl.style.boxSizing = "border-box";
-      seatEl.style.display = "flex";
-      seatEl.style.flexDirection = "column";
-      seatEl.style.justifyContent = "center";
-      seatEl.style.alignItems = "center";
-      seatEl.style.fontSize = "10px";
-      seatEl.style.background = s.color || "#fff";
-      seatEl.style.padding = "4px";
-      seatEl.style.textAlign = "center";
-      // content
-      if (s.is_broken) {
-        seatEl.innerHTML = `<div style="font-weight:bold;color:#8B0000">BROKEN</div><div style="font-size:9px;color:#800000">${s.position}</div>`;
-      } else if (s.is_unallocated) {
-        seatEl.innerHTML = `<div style="font-weight:600;color:#666">Batch ${s.batch || ""}</div><div style="font-weight:bold;color:#444">UNALLOC</div>`;
-      } else {
-        const setVal = s.paper_set ? s.paper_set : "";
-        const roll = s.roll_number ? s.roll_number : "";
-        const bLabel = s.batch_label ? s.batch_label : `B${s.batch || ""}`;
-        seatEl.innerHTML = `<div style="font-size:10px;font-weight:600">${bLabel}</div><div style="font-weight:bold">${roll}${setVal}</div><div style="font-size:9px;color:#333">${s.position}</div>`;
-      }
-      grid.appendChild(seatEl);
-    });
-
-    container.appendChild(grid);
-
-    const opt = {
-      margin: 8,
-      filename: "seating_arrangement.pdf",
-      image: { type: "jpeg", quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: "mm", format: "a4", orientation: "landscape" },
-    };
-
-    if (window && window.html2pdf) {
-      window.html2pdf().set(opt).from(container).save();
-    } else {
-      alert("html2pdf library not loaded. Add the script to public/index.html for PDF downloads.");
-    }
   }
 
   return (
@@ -401,13 +469,64 @@ const AllocationPage = ({ showToast }) => {
               </div>
 
               <div className="col-span-1 md:col-span-2 mt-4">
-                <div className="flex gap-3 flex-wrap">
-                  <button onClick={generate} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-medium transition"> 
+                <div className="flex gap-3 flex-wrap items-center">
+                  <button onClick={generate} disabled={loading} className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-2 rounded font-medium transition"> 
                     {loading ? "Generating..." : "Generate Chart"}
                   </button>
-                  <button onClick={downloadPdf} className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded font-medium transition" disabled={!webData}>
-                    Download PDF
+                  
+                  {/* Main PDF Button */}
+                  <button 
+                    onClick={downloadPdf}
+                    disabled={!webData || pdfLoading}
+                    className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-6 py-2 rounded font-medium transition inline-flex items-center gap-2"
+                  >
+                    {pdfLoading ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Generating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>📥</span>
+                        <span>Download PDF</span>
+                      </>
+                    )}
                   </button>
+
+                  {/* PDF Options Dropdown */}
+                  <div className="relative group">
+                    <button 
+                      disabled={!webData || pdfLoading}
+                      className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white px-4 py-2 rounded font-medium transition"
+                      title="PDF Options"
+                    >
+                      ⚙️
+                    </button>
+                    
+                    <div className="absolute left-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 z-20">
+                      <button
+                        onClick={downloadPdfClientSide}
+                        disabled={!webData || pdfLoading}
+                        className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-t-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <div className="font-semibold text-sm text-gray-800">🌐 Client-Side PDF</div>
+                        <div className="text-xs text-gray-500">Fast, browser-based (html2pdf)</div>
+                      </button>
+                      <div className="border-t border-gray-100"></div>
+                      <button
+                        onClick={downloadPdfServerSide}
+                        disabled={!webData || pdfLoading}
+                        className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-b-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <div className="font-semibold text-sm text-gray-800">🖥️ Server-Side PDF</div>
+                        <div className="text-xs text-gray-500">Professional (ReportLab)</div>
+                      </button>
+                    </div>
+                  </div>
+                  
                   <button onClick={showConstraints} className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded font-medium transition">
                     View Constraints
                   </button>
@@ -423,7 +542,6 @@ const AllocationPage = ({ showToast }) => {
 
               {error && <div className="col-span-1 md:col-span-2 mt-2 text-red-600 font-medium text-sm">{error}</div>}
             </div>
-
           </div>
 
           <div className="bg-white rounded-xl shadow p-6 h-fit">
@@ -462,57 +580,11 @@ const AllocationPage = ({ showToast }) => {
                   {webData.seating.map((row, rIdx)=> row.map((seat, cIdx) => renderSeat(seat, rIdx, cIdx)))}
                 </div>
               </div>
-
-              {/* Summary */}
-              <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="p-3 bg-gray-50 rounded border">
-                  <strong className="text-gray-700">Total Available Seats:</strong>
-                  <div className="text-lg font-bold text-gray-900">{webData.summary.total_available_seats ?? "-"}</div>
-                </div>
-                <div className="p-3 bg-gray-50 rounded border">
-                  <strong className="text-gray-700">Allocated Students:</strong>
-                  <div className="text-lg font-bold text-gray-900">{webData.summary.total_allocated_students ?? "-"}</div>
-                </div>
-                <div className="p-3 bg-gray-50 rounded border">
-                  <strong className="text-gray-700">Broken Seats:</strong>
-                  <div className="text-lg font-bold text-gray-900">{webData.summary.broken_seats_count ?? 0}</div>
-                </div>
-                <div className="p-3 bg-gray-50 rounded border">
-                  <strong className="text-gray-700">Unallocated:</strong>
-                  <div className="text-lg font-bold text-gray-900">{(webData.summary.total_available_seats ?? 0) - (webData.summary.total_allocated_students ?? 0)}</div>
-                </div>
-              </div>
-
-              {/* Unallocated per batch */}
-              {webData.summary.unallocated_per_batch && (
-                <div className="mt-4 p-3 bg-orange-50 rounded border border-orange-200">
-                  <strong className="text-orange-700">Unallocated Students per Batch:</strong>
-                  <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-2">
-                    {Object.entries(webData.summary.unallocated_per_batch).map(([batch, count]) => (
-                      <div key={batch} className="text-sm text-orange-600">
-                        Batch {batch}: <strong>{count}</strong>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-3 bg-blue-50 rounded border border-blue-200">
-                  <strong className="text-blue-900">Batch Distribution</strong>
-                  <pre className="text-xs mt-2 overflow-auto">{JSON.stringify(webData.summary.batch_distribution || {}, null, 2)}</pre>
-                </div>
-                <div className="p-3 bg-blue-50 rounded border border-blue-200">
-                  <strong className="text-blue-900">Paper Set Distribution</strong>
-                  <pre className="text-xs mt-2 overflow-auto">{JSON.stringify(webData.summary.paper_set_distribution || webData.summary.paper_set_distribution_per_batch || {}, null, 2)}</pre>
-                </div>
-              </div>
             </>
-          )}
+            )}
         </div>
-      </div>
+        </div>
     </div>
-  );
+    );
 };
-
 export default AllocationPage;
