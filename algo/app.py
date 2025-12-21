@@ -9,7 +9,7 @@ from pathlib import Path
 from functools import wraps
 from typing import Dict, List, Tuple
 
-from flask import Flask, jsonify, request, send_file,render_template_string,session,render_template
+from flask import Flask, jsonify, request, send_file, render_template_string, session, render_template
 from flask_cors import CORS
 
 from pdf_gen.pdf_generation import get_or_create_seating_pdf
@@ -22,57 +22,48 @@ try:
 except ImportError:
     generate_attendance_pdf = None
 
-
 # --------------------------------------------------
 # FIXED: Auth Module Import
 # --------------------------------------------------
-# Get the directory where this file is located
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 BACKEND_DIR = os.path.join(CURRENT_DIR, "Backend")
 
-# Add Backend directory to path if it exists
 if os.path.exists(BACKEND_DIR):
     sys.path.insert(0, BACKEND_DIR)
     print(f"✅ Added to path: {BACKEND_DIR}")
 
-# Try importing auth_service
 auth_signup = None
 auth_login = None
 verify_token = None
 get_user_by_token = None
 update_user_profile = None
+google_auth_handler = None
 
 try:
-    # First try: auth_service in current directory
     from auth_service import (
         signup as auth_signup,
         login as auth_login,
         verify_token,
         get_user_by_token,
-        update_user_profile
+        update_user_profile,
+        google_auth_handler
     )
-    print("✅ Auth service imported successfully (from current dir)")
-except ImportError as e1:
+    print("✅ Auth service imported successfully")
+except ImportError as e:
     try:
-        # Second try: Backend.auth_service
         from algo.auth_service import (
             signup as auth_signup,
             login as auth_login,
             verify_token,
             get_user_by_token,
-            update_user_profile
+            update_user_profile,
+            google_auth_handler
         )
         print("✅ Auth service imported successfully (from Backend package)")
     except ImportError as e2:
         print("\n" + "!" * 70)
         print("⚠️  WARNING: Auth module could not be imported")
-        print(f"Error 1 (Direct): {e1}")
-        print(f"Error 2 (Package): {e2}")
-        print(f"Current directory: {CURRENT_DIR}")
-        print(f"Backend directory exists: {os.path.exists(BACKEND_DIR)}")
-        if os.path.exists(BACKEND_DIR):
-            print(f"Backend contents: {os.listdir(BACKEND_DIR)}")
-        print("Auth endpoints will return 'Auth module missing' errors")
+        print(f"Error: {e2}")
         print("!" * 70 + "\n")
 
 # --------------------------------------------------
@@ -82,7 +73,7 @@ try:
     from pdf_gen import create_seating_pdf
     print("✅ PDF generation module loaded")
 except ImportError:
-    print("⚠️  PDF generation module not found (pdf_gen.py)")
+    print("⚠️  PDF generation module not found")
     create_seating_pdf = None
 
 # --------------------------------------------------
@@ -101,6 +92,7 @@ except ImportError as e:
 # App setup
 # --------------------------------------------------
 app = Flask(__name__)
+app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key-change-in-prod')
 CORS(app, supports_credentials=True, resources={r"/api/*": {"origins": "*"}})
 
 BASE_DIR = Path(__file__).parent
@@ -157,17 +149,23 @@ ensure_demo_db()
 # Helpers
 # --------------------------------------------------
 def parse_int_dict(val):
-    if isinstance(val, dict): return {int(k): int(v) for k, v in val.items()}
+    if isinstance(val, dict): 
+        return {int(k): int(v) for k, v in val.items()}
     if isinstance(val, str) and val:
-        try: return json.loads(val)
-        except: pass
+        try: 
+            return json.loads(val)
+        except: 
+            pass
     return {}
 
 def parse_str_dict(val):
-    if isinstance(val, dict): return {int(k): str(v) for k, v in val.items()}
+    if isinstance(val, dict): 
+        return {int(k): str(v) for k, v in val.items()}
     if isinstance(val, str) and val:
-        try: return json.loads(val)
-        except: pass
+        try: 
+            return json.loads(val)
+        except: 
+            pass
     return {}
 
 def get_batch_counts_and_labels_from_db():
@@ -200,7 +198,7 @@ def token_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
         if verify_token is None: 
-            return fn(*args, **kwargs)  # Skip auth if module not loaded
+            return jsonify({"error": "Auth module not available"}), 501
         
         auth = request.headers.get("Authorization")
         if not auth: 
@@ -225,7 +223,7 @@ def token_required(fn):
 @app.route("/api/auth/signup", methods=["POST"])
 def signup_route():
     if auth_signup is None: 
-        return jsonify({"error": "Auth module not available. Check server logs."}), 501
+        return jsonify({"error": "Auth module not available"}), 501
     
     data = request.get_json(force=True)
     ok, msg = auth_signup(
@@ -239,13 +237,34 @@ def signup_route():
 @app.route("/api/auth/login", methods=["POST"])
 def login_route():
     if auth_login is None: 
-        return jsonify({"error": "Auth module not available. Check server logs."}), 501
+        return jsonify({"error": "Auth module not available"}), 501
     
     data = request.get_json(force=True)
     ok, user, token = auth_login(data.get("email"), data.get("password"))
     if not ok:
         return jsonify({"error": token}), 401
     return jsonify({"token": token, "user": user})
+
+# ============================================================================
+# GOOGLE AUTH ROUTE (NEW)
+# ============================================================================
+@app.route("/api/auth/google", methods=["POST"])
+def google_auth_route():
+    """Handle Google OAuth token and create/update user"""
+    if google_auth_handler is None:
+        return jsonify({"error": "Google auth not available"}), 501
+    
+    data = request.get_json(force=True)
+    token = data.get("token")
+    
+    if not token:
+        return jsonify({"error": "No token provided"}), 400
+    
+    ok, user, auth_token = google_auth_handler(token)
+    if not ok:
+        return jsonify({"error": user}), 401
+    
+    return jsonify({"token": auth_token, "user": user})
 
 @app.route("/api/auth/profile", methods=["GET"])
 @token_required
@@ -257,13 +276,16 @@ def get_profile_route():
     if not auth_header: 
         return jsonify({"error": "Missing token"}), 401
     
-    token = auth_header.split(" ")[1]
-    user = get_user_by_token(token)
-    
-    if not user:
-        return jsonify({"error": "User not found or token invalid"}), 404
+    try:
+        token = auth_header.split(" ")[1]
+        user = get_user_by_token(token)
         
-    return jsonify({"success": True, "user": user})
+        if not user:
+            return jsonify({"error": "User not found or token invalid"}), 404
+            
+        return jsonify({"success": True, "user": user})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/auth/profile", methods=["PUT"])
 @token_required
@@ -272,23 +294,14 @@ def update_profile_route():
         return jsonify({"error": "Auth module not available"}), 501
     
     data = request.get_json(force=True)
-    ok, msg = updated_user = {
-    "id": request.user_id,
-    "username": data.get("username"),
-    "email": data.get("email"),
-    "full_name": data.get("full_name"), 
-}
-
+    username = data.get("username")
+    email = data.get("email")
+    
+    ok, msg = update_user_profile(request.user_id, username, email)
     
     if ok:
-        updated_user = {
-        "id": request.user_id,
-        "username": data.get("username"),
-        "email": data.get("email"),
-        "full_name": data.get("full_name"), 
-}
-
-        return jsonify({"success": True, "message": msg, "user": updated_user})
+        user = get_user_by_token(request.headers.get("Authorization").split(" ")[1])
+        return jsonify({"success": True, "message": msg, "user": user})
     else:
         return jsonify({"success": False, "error": msg}), 400
 
@@ -501,24 +514,20 @@ def constraints_status():
     return jsonify(algo.get_constraints_status())
 
 # ============================================================================
-#   PDF GENERATION CONNECTION
-# (Unchanged)
+# PDF GENERATION
 # ============================================================================
 @app.route('/template-editor')
 def template_editor():
-    """Serve the template editor interface (from the templates folder)"""
-    # NOTE: Since we changed Flask configuration, if 'template_editor.html'
+    """Serve the template editor interface"""
+    return render_template('template_editor.html')
+    # Since we changed Flask configuration, if 'template_editor.html'
     # is still a separate file, you should ensure it is in the 'templates' folder
     # or handle it as part of the React build. 
     # If the TemplateEditor is a React component, this route should also use render_template('index.html')
     # and let React Router handle the /template-editor path.
-    return render_template('template_editor.html')
-
-# ... (rest of the PDF routes are unchanged)
 
 @app.route('/api/template-config', methods=['GET', 'POST'])
 def manage_template():
-    # ... (function body unchanged)
     user_id = 'test_user'
     template_name = request.args.get('template_name', 'default')
     
@@ -536,18 +545,14 @@ def manage_template():
     elif request.method == 'POST':
         try:
             template_data = request.form.to_dict()
-            print(f"📝 Updating template for test user: {list(template_data.keys())}")
             
-            # Handle banner image upload
             if 'bannerImage' in request.files:
                 file = request.files['bannerImage']
                 if file and file.filename:
                     image_path = template_manager.save_user_banner(user_id, file, template_name)
                     if image_path:
                         template_data['banner_image_path'] = image_path
-                        print(f"🖼️ Banner uploaded: {image_path}")
             
-            # Save template
             template_manager.save_user_template(user_id, template_data, template_name)
             
             return jsonify({
@@ -557,26 +562,18 @@ def manage_template():
             })
             
         except Exception as e:
-            print(f"❌ Template update error: {e}")
             return jsonify({'error': f'Failed to update template: {str(e)}'}), 500
 
-
-# Updated PDF generation route (modify your existing one)
 @app.route('/api/generate-pdf', methods=['POST'])
 def generate_pdf():
-    # ... (function body unchanged)
     try:
         data = request.get_json()
         if not data or 'seating' not in data:
             return jsonify({"error": "Invalid seating data"}), 400
         
-        # Use test user for templates, but keep backward compatibility
         user_id = 'test_user'
         template_name = request.args.get('template_name', 'default')
         
-        print(f"📊 Generating PDF for test user with template: {template_name}")
-        
-        # Uses user-specific templates
         pdf_path = get_or_create_seating_pdf(data, user_id=user_id, template_name=template_name)
         
         return send_file(
@@ -585,13 +582,10 @@ def generate_pdf():
             download_name=f"seating_plan_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
         )
     except Exception as e:
-        print(f"❌ PDF generation error: {e}")
         return jsonify({"error": str(e)}), 500
 
-# Test PDF generation with sample data
 @app.route('/api/test-pdf', methods=['GET'])
 def test_pdf():
-    # ... (function body unchanged)
     user_id = 'test_user'
     template_name = request.args.get('template_name', 'default')
     
@@ -619,17 +613,15 @@ def test_pdf():
             download_name=f"test_seating_plan.pdf"
         )
     except Exception as e:
-        print(f"❌ PDF Error: {e}")
         return jsonify({"error": str(e)}), 500
-    
-#=============================================================
-# Attendence Generation
-#=============================================================
+
+# ============================================================================
+# ATTENDANCE GENERATION
+# ============================================================================
 @app.route('/api/allocations', methods=['GET'])
 def get_all_allocations():
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
-    # Query to get unique batches that have already been allocated
     cur.execute("SELECT DISTINCT batch_id, batch_name, created_at FROM uploads")
     rows = cur.fetchall()
     conn.close()
@@ -656,8 +648,6 @@ def get_attendance():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-
 # --------------------------------------------------
 # Admin/Maintenance Routes
 # --------------------------------------------------
@@ -679,15 +669,14 @@ def reset_data():
         conn.commit()
         conn.close()
         
-        print("🧹 Database (demo.db) reset successfully.")
         return jsonify({
             "success": True, 
-            "message": "All student and allocation data has been cleared."
+            "message": "All data has been cleared."
         })
         
     except Exception as e:
-        print(f"❌ RESET ERROR: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
+
 # --------------------------------------------------
 # Health Check
 # --------------------------------------------------
@@ -697,6 +686,7 @@ def health_check():
         "status": "ok",
         "modules": {
             "auth": auth_signup is not None,
+            "google_auth": google_auth_handler is not None,
             "pdf": create_seating_pdf is not None,
             "parser": StudentDataParser is not None,
             "algorithm": SeatingAlgorithm is not None
@@ -704,6 +694,7 @@ def health_check():
     })
 
 if __name__ == "__main__":
-  
-    print("=" * 70 + "\n")
+    print("=" * 70)
+    print("🚀 Starting Flask Server on http://localhost:5000")
+    print("=" * 70)
     app.run(debug=True, port=5000)

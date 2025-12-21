@@ -2,23 +2,109 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext();
 
-// API base URL - adjust this if your backend runs on a different port
-const API_BASE_URL = '';
+// API base URL
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [darkMode, setDarkMode] = useState(() => {
+    // Load dark mode from localStorage on initial load
+    const saved = localStorage.getItem('darkMode');
+    return saved ? JSON.parse(saved) : false;
+  });
 
+  // ============================================================================
+  // INITIALIZE AUTH ON MOUNT (Restore user session)
+  // ============================================================================
   useEffect(() => {
-    // Check if user is already logged in
-    const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
-    if (token && userData) {
-      setUser(JSON.parse(userData));
-    }
-    setLoading(false);
+    const initializeAuth = () => {
+      try {
+        // Get token from localStorage
+        const token = localStorage.getItem('token');
+        const userData = localStorage.getItem('user');
+
+        if (token && userData) {
+          // User was previously logged in - restore session
+          setUser(JSON.parse(userData));
+          console.log('✅ User session restored from localStorage');
+        } else {
+          console.log('ℹ️  No saved session found');
+        }
+      } catch (error) {
+        console.error('Error restoring session:', error);
+        // Clear corrupted data
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
+      
+      setLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
+  // ============================================================================
+  // PERSIST DARK MODE TO localStorage
+  // ============================================================================
+  useEffect(() => {
+    localStorage.setItem('darkMode', JSON.stringify(darkMode));
+    console.log(`🌓 Dark mode ${darkMode ? 'enabled' : 'disabled'}`);
+  }, [darkMode]);
+
+  // ============================================================================
+  // APPLY DARK MODE TO DOCUMENT
+  // ============================================================================
+  useEffect(() => {
+    const htmlElement = document.documentElement;
+    if (darkMode) {
+      htmlElement.classList.add('dark');
+    } else {
+      htmlElement.classList.remove('dark');
+    }
+  }, [darkMode]);
+
+  // ============================================================================
+  // TOGGLE DARK MODE
+  // ============================================================================
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode);
+  };
+
+  // ============================================================================
+  // Google OAuth Login
+  // ============================================================================
+  const googleLogin = async (googleToken) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token: googleToken }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { success: false, error: data.error || 'Google login failed' };
+      }
+
+      // Store token and user data in localStorage
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      setUser(data.user);
+
+      console.log('✅ Google login successful');
+      return { success: true, user: data.user };
+    } catch (error) {
+      return { success: false, error: error.message || 'Google login failed' };
+    }
+  };
+
+  // ============================================================================
+  // Email/Password Login
+  // ============================================================================
   const login = async (email, password) => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
@@ -35,16 +121,21 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: data.error || 'Login failed' };
       }
 
-      // Store token and user data
+      // Store token and user data in localStorage
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       setUser(data.user);
+
+      console.log('✅ Email login successful');
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message || 'Login failed' };
     }
   };
 
+  // ============================================================================
+  // Signup
+  // ============================================================================
   const signup = async (userData) => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
@@ -67,11 +158,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // ============================================================================
+  // Logout (Clear everything)
+  // ============================================================================
   const logout = async () => {
     try {
       const token = localStorage.getItem('token');
-      
-      // Call logout endpoint (optional, mainly for server-side cleanup)
+
       await fetch(`${API_BASE_URL}/api/auth/logout`, {
         method: 'POST',
         headers: {
@@ -81,13 +174,17 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      // Clear local storage regardless of API response
+      // Clear localStorage
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       setUser(null);
+      console.log('✅ Logged out successfully');
     }
   };
 
+  // ============================================================================
+  // Get Profile
+  // ============================================================================
   const getProfile = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -114,6 +211,9 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // ============================================================================
+  // Update Profile
+  // ============================================================================
   const updateProfile = async (username, email) => {
     try {
       const token = localStorage.getItem('token');
@@ -136,7 +236,7 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: data.error || 'Failed to update profile' };
       }
 
-      // Update local state
+      // Update localStorage with new user data
       if (data.user) {
         localStorage.setItem('user', JSON.stringify(data.user));
         setUser(data.user);
@@ -148,8 +248,21 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const value = {
+    user,
+    login,
+    signup,
+    logout,
+    getProfile,
+    updateProfile,
+    googleLogin,
+    loading,
+    darkMode,
+    toggleDarkMode,
+  };
+
   return (
-     <AuthContext.Provider value={{ user, login, signup, logout, getProfile, updateProfile, loading }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
