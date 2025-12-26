@@ -105,6 +105,19 @@ def ensure_demo_db():
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
 
+    # 1. Classroom Registry
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS classrooms (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL,
+            rows INTEGER NOT NULL,
+            cols INTEGER NOT NULL,
+            broken_seats TEXT,
+            block_width INTEGER DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+
     cur.execute("""
         CREATE TABLE IF NOT EXISTS uploads (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -216,6 +229,51 @@ def token_required(fn):
         request.user_id = payload.get("user_id")
         return fn(*args, **kwargs)
     return wrapper
+
+# --------------------------------------------------
+# 7. API ROUTES: CLASSROOMS
+# --------------------------------------------------
+@app.route("/api/classrooms", methods=["GET"])
+def get_classrooms():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM classrooms ORDER BY name ASC")
+    rooms = [dict(r) for r in cur.fetchall()]
+    conn.close()
+    return jsonify(rooms)
+
+@app.route("/api/classrooms", methods=["POST"])
+def save_classroom():
+    data = request.get_json()
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT OR REPLACE INTO classrooms (id, name, rows, cols, broken_seats, block_width)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (data.get('id'), data['name'], data['rows'], data['cols'], 
+              data.get('broken_seats', ''), data.get('block_width', 1)))
+        conn.commit()
+        return jsonify({"success": True, "message": "Classroom saved"}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+    finally:
+        conn.close()
+
+@app.route("/api/classrooms/<int:room_id>", methods=["DELETE"])
+def delete_classroom(room_id):
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM classrooms WHERE id = ?", (room_id,))
+        conn.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
 
 # --------------------------------------------------
 # AUTH ROUTES

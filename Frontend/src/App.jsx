@@ -18,11 +18,11 @@ import DashboardPage from './pages/DashboardPage';
 import UploadPage from './pages/UploadPage';
 import Allocation from './pages/Allocation';
 import CreatePlan from './pages/CreatePlan';
-import ClassroomLayout from './pages/ClassroomLayout';
 import FeedbackPage from './pages/FeedbackPage';
 import AboutusPage from './pages/AboutusPage';
 import TemplateEditor from './pages/TemplateEditor';
 import AttendancePage from './pages/AttendencePage';
+import ClassroomPage from './pages/ClassroomPage';
 
 // -------------------------------------------------------------------
 // THEME TOGGLE (optional, kept for completeness)
@@ -168,8 +168,8 @@ const AppContent = () => {
         return <CreatePlan setCurrentPage={setCurrentPage} />;
       case 'allocation':
         return <Allocation showToast={showToast} />;
-      case 'classroom-layout':
-        return <ClassroomLayout setCurrentPage={setCurrentPage} />;
+      case 'classroom':
+        return <ClassroomPage setCurrentPage={setCurrentPage} />;
       
       case 'feedback':
         return <FeedbackPage showToast={showToast} />;

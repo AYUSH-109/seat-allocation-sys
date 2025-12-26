@@ -1,902 +1,314 @@
-// AllocationPage.jsx - WITH HYBRID PDF SUPPORT
-import React, { useEffect, useState, useRef } from "react";
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  Users, Layout, MapPin, Download, Play, 
+  Settings, Monitor, Palette, Hash, Type, 
+  Loader2, AlertCircle, RefreshCw, CheckCircle2,
+  Database, ChevronRight, FileDown, Zap, Trash2
+} from 'lucide-react';
 
-/**
- * AllocationPage - Enhanced with Hybrid PDF Generation
- *
- * Features:
- * - All original functionality preserved
- * - Client-side PDF (html2pdf) - Fast, browser-based
- * - Server-side PDF (ReportLab) - Professional quality
- * - Auto-fallback between methods
- * - User can choose PDF method via dropdown
- * - Dynamic Theme Support for Inputs
- */
+// --- INLINE UI COMPONENTS ---
+const Card = ({ className, children }) => <div className={`bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm ${className}`}>{children}</div>;
+const Button = ({ className, children, onClick, disabled, title, variant }) => {
+    const base = "inline-flex items-center justify-center rounded-xl font-bold transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none";
+    const bg = variant === "destructive" ? "bg-red-100 text-red-600 hover:bg-red-200" : className.includes('bg-') ? "" : "bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-white";
+    return <button onClick={onClick} disabled={disabled} title={title} className={`${base} ${bg} ${className}`}>{children}</button>
+};
+const Input = (props) => <input {...props} className={`flex h-10 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white ${props.className}`} />;
 
 const AllocationPage = ({ showToast }) => {
+  // 1. DATA STATE
+  const [classrooms, setClassrooms] = useState([]);
+  const [selectedRoomId, setSelectedRoomId] = useState("");
+  
+  // 2. CORE PARAMETERS (Auto-filled by room)
   const [rows, setRows] = useState(8);
   const [cols, setCols] = useState(10);
-  const [numBatches, setNumBatches] = useState(3);
-  const [blockWidth, setBlockWidth] = useState(3);
+  const [blockWidth, setBlockWidth] = useState(2);
   const [brokenSeats, setBrokenSeats] = useState("");
-  const [batchStudentCounts, setBatchStudentCounts] = useState("");
-  const [batchLabelsInput, setBatchLabelsInput] = useState("");
+  
+  // 3. EXAM SESSION CONFIG (Manual)
+  const [numBatches, setNumBatches] = useState(2);
+  const [batchConfigs, setBatchConfigs] = useState([
+    { id: 1, label: 'Batch A', startRoll: '101', color: '#3b82f6' },
+    { id: 2, label: 'Batch B', startRoll: '201', color: '#ef4444' }
+  ]);
   const [useDemoDb, setUseDemoDb] = useState(true);
-  const [batchStartRolls, setBatchStartRolls] = useState({});
-  const [batchRollNumbers, setBatchRollNumbers] = useState({});
-  const [batchColorsInput, setBatchColorsInput] = useState("");
-  const [serialMode, setSerialMode] = useState("per_batch");
-  const [serialWidth, setSerialWidth] = useState(0);
   const [batchByColumn, setBatchByColumn] = useState(true);
   const [enforceNoAdjacentBatches, setEnforceNoAdjacentBatches] = useState(false);
 
+  // 4. UI STATE
   const [loading, setLoading] = useState(false);
   const [webData, setWebData] = useState(null);
   const [error, setError] = useState(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [resetting, setResetting] = useState(false);
-
   const chartRef = useRef();
 
-  // Keep a derived list of dynamic start-roll inputs synced to numBatches
+  // Load Registry
   useEffect(() => {
-    const next = { ...batchStartRolls };
-    for (let i = 1; i <= numBatches; i++) {
-      if (!(i in next)) next[i] = "";
-    }
-    Object.keys(next)
-      .map(Number)
-      .forEach((k) => {
-        if (k > numBatches) delete next[k];
-      });
-    setBatchStartRolls(next);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetch('http://localhost:5000/api/classrooms')
+      .then(res => res.json())
+      .then(data => setClassrooms(data))
+      .catch(err => console.error(err));
+  }, []);
+
+  // Sync Batches
+  useEffect(() => {
+    const count = parseInt(numBatches) || 1;
+    setBatchConfigs(prev => {
+      const news = [...prev];
+      if (count > prev.length) {
+         const newBatches = [];
+         for(let i = prev.length; i < count; i++) newBatches.push({ id: i+1, label: `Batch ${String.fromCharCode(65+i)}`, startRoll: `${(i+1)*100+1}`, color: '#'+Math.floor(Math.random()*16777215).toString(16).padStart(6, '0') });
+         return [...prev, ...newBatches];
+      }
+      return prev.slice(0, count);
+    });
   }, [numBatches]);
 
-  function parseKVList(str) {
-    const out = {};
-    if (!str) return out;
-    str
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean)
-      .forEach((part) => {
-        const sep = part.includes(":") ? ":" : part.includes("=") ? "=" : null;
-        if (!sep) return;
-        const [k, v] = part.split(sep, 2).map((x) => x.trim());
-        if (!k) return;
-        const ik = parseInt(k, 10);
-        out[isNaN(ik) ? k : ik] = v;
-      });
-    return out;
-  }
-
-  function buildPayload() {
-    return {
-      rows,
-      cols,
-      num_batches: numBatches,
-      block_width: blockWidth,
-      batch_by_column: batchByColumn,
-      enforce_no_adjacent_batches: enforceNoAdjacentBatches,
-      broken_seats: brokenSeats,
-      batch_student_counts: batchStudentCounts,
-      batch_colors: batchColorsInput,
-      start_rolls: Object.keys(batchStartRolls).length
-        ? Object.fromEntries(
-            Object.entries(batchStartRolls)
-              .filter(([, v]) => v && String(v).trim() !== "")
-              .map(([k, v]) => [parseInt(k, 10), String(v).trim()])
-            )
-        : undefined,
-      serial_mode: serialMode,
-      serial_width: serialWidth || 0,
-      use_demo_db: useDemoDb,
-      batch_roll_numbers: Object.keys(batchRollNumbers).length ? batchRollNumbers : undefined,
-      batch_labels: Object.keys(parseKVList(batchLabelsInput)).length ? parseKVList(batchLabelsInput) : undefined,
-    };
-  }
-
-  async function generate() {
-    setLoading(true);
-    setError(null);
-    setWebData(null);
-    try {
-      const payload = buildPayload();
-      const res = await fetch("/api/generate-seating", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Server error");
-      } else {
-        setWebData(data);
-        setTimeout(() => {
-          chartRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-        }, 80);
-      }
-    } catch (err) {
-      setError(err.message || "Network error");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function showConstraints() {
-    try {
-      const payload = buildPayload();
-      const res = await fetch("/api/constraints-status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Failed to fetch constraints");
-        return;
-      }
-      const body = data.constraints
-        .map(
-          (c) =>
-            `${c.applied ? "Applied" : "Not applied"} — ${c.name}\n  ${c.description}\n  Status: ${
-              c.satisfied ? "SATISFIED" : "NOT SATISFIED"
-            }\n`
-        )
-        .join("\n\n");
-      alert(`Constraints status:\n\n${body}`);
-    } catch (err) {
-      alert("Error fetching constraints: " + (err.message || err));
-    }
-  }
-
-  async function handleResetDatabase() {
-    if (!window.confirm("⚠️ ARE YOU SURE?\n\nThis will delete ALL student data, uploads, and previous allocations from the database.\n\nThis action cannot be undone.")) {
-      return;
-    }
-
-    setResetting(true);
-    try {
-      const token = localStorage.getItem('token'); 
-      const headers = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-
-      const res = await fetch("/api/reset-data", {
-        method: "POST",
-        headers: headers
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Reset failed");
-      }
-
-      alert("✅ Database reset successful. All student data cleared.");
-      setWebData(null); 
-      if (showToast) showToast("Database cleared successfully", "success");
-
-    } catch (err) {
-      console.error("Reset error:", err);
-      alert("Failed to reset database: " + err.message);
-    } finally {
-      setResetting(false);
-    }
-}
-
-  // CLIENT-SIDE PDF - With forced render and longer delay
-function downloadPdfClientSide() {
-  if (!webData) {
-    alert('No seating data available. Generate chart first.');
-    return;
-  }
-
-  if (!window.html2pdf) {
-    alert('html2pdf library not loaded.');
-    return;
-  }
-
-  console.log('📄 Generating PDF...');
-  setPdfLoading(true);
-
-  // Create container VISIBLE on screen
-  const container = document.createElement("div");
-  container.id = "pdf-capture-container";
-  container.style.cssText = `
-    padding: 30px;
-    font-family: Arial, sans-serif;
-    background: #ffffff;
-    width: 900px;
-    position: fixed;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 999999;
-    box-shadow: 0 0 50px rgba(0,0,0,0.5);
-    max-height: 90vh;
-    overflow: auto;
-  `;
-
-  // Overlay
-  const overlay = document.createElement("div");
-  overlay.style.cssText = `
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0,0,0,0.8);
-    z-index: 999998;
-  `;
-
-  const loadingText = document.createElement("div");
-  loadingText.style.cssText = `
-    position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    color: white;
-    font-size: 20px;
-    font-weight: bold;
-    text-align: center;
-    z-index: 9999999;
-    background: rgba(0,0,0,0.9);
-    padding: 20px 40px;
-    border-radius: 10px;
-  `;
-  loadingText.innerHTML = `
-    <div>🔄 Generating PDF...</div>
-    <div style="font-size: 14px; margin-top: 10px;">Please wait 3-4 seconds</div>
-  `;
-
-  // Header
-  const h = document.createElement("h2");
-  h.style.cssText = `
-    text-align: center;
-    margin: 0 0 20px 0;
-    color: #000000;
-    font-size: 28px;
-    font-weight: bold;
-    font-family: Arial, sans-serif;
-  `;
-  h.textContent = "Seating Arrangement";
-  container.appendChild(h);
-
-  // Info
-  const info = document.createElement("div");
-  info.style.cssText = `
-    text-align: center;
-    font-size: 14px;
-    margin-bottom: 20px;
-    color: #000000;
-    font-weight: normal;
-    font-family: Arial, sans-serif;
-  `;
-  info.textContent = `Rows: ${rows} | Cols: ${cols} | Batches: ${numBatches} | Generated: ${new Date().toLocaleString()}`;
-  container.appendChild(info);
-
-  // Grid wrapper
-  const gridWrapper = document.createElement("div");
-  gridWrapper.style.cssText = `
-    background: #ffffff;
-    padding: 15px;
-    border: 3px solid #000000;
-  `;
-
-  // Grid
-  const grid = document.createElement("div");
-  grid.style.cssText = `
-    display: grid;
-    grid-template-columns: repeat(${cols}, 1fr);
-    gap: 6px;
-    background-color: #ffffff;
-  `;
-
-  webData.seating.flat().forEach((s, idx) => {
-    const seatEl = document.createElement("div");
-    seatEl.style.cssText = `
-      border: 2px solid #000000;
-      box-sizing: border-box;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      padding: 8px 4px;
-      text-align: center;
-      min-height: 70px;
-      background-color: ${s.color || "#ffffff"};
-      font-family: Arial, sans-serif;
-    `;
-    
-    if (s.is_broken) {
-      const brokenLabel = document.createElement("div");
-      brokenLabel.style.cssText = "font-weight: bold; color: #8B0000; font-size: 13px; font-family: Arial, sans-serif;";
-      brokenLabel.textContent = "BROKEN";
-      
-      const posLabel = document.createElement("div");
-      posLabel.style.cssText = "font-size: 10px; color: #800000; margin-top: 4px; font-family: Arial, sans-serif;";
-      posLabel.textContent = s.position;
-      
-      seatEl.appendChild(brokenLabel);
-      seatEl.appendChild(posLabel);
-    } else if (s.is_unallocated) {
-      const unallocLabel = document.createElement("div");
-      unallocLabel.style.cssText = "font-weight: bold; color: #444444; font-size: 12px; font-family: Arial, sans-serif;";
-      unallocLabel.textContent = "UNALLOC";
-      seatEl.appendChild(unallocLabel);
-    } else {
-      const bLabel = s.batch_label || `B${s.batch || ""}`;
-      const roll = s.roll_number || "";
-      const pSet = s.paper_set || "";
-      
-      const batchDiv = document.createElement("div");
-      batchDiv.style.cssText = "font-weight: 600; margin-bottom: 4px; font-size: 11px; color: #000000; font-family: Arial, sans-serif;";
-      batchDiv.textContent = bLabel;
-      
-      const rollDiv = document.createElement("div");
-      rollDiv.style.cssText = "font-weight: bold; font-size: 14px; color: #000000; font-family: Arial, sans-serif;";
-      rollDiv.textContent = roll;
-      
-      seatEl.appendChild(batchDiv);
-      seatEl.appendChild(rollDiv);
-      
-      if (pSet) {
-        const setDiv = document.createElement("div");
-        setDiv.style.cssText = "font-size: 9px; margin-top: 3px; color: #000000; font-family: Arial, sans-serif;";
-        setDiv.textContent = `Set: ${pSet}`;
-        seatEl.appendChild(setDiv);
-      }
-    }
-    
-    grid.appendChild(seatEl);
-  });
-
-  gridWrapper.appendChild(grid);
-  container.appendChild(gridWrapper);
-  
-  document.body.appendChild(overlay);
-  document.body.appendChild(loadingText);
-  document.body.appendChild(container);
-
-  // Force reflow
-  void container.offsetHeight;
-
-  const opt = { 
-    margin: 15,
-    filename: "seating_arrangement.pdf", 
-    image: { 
-      type: "jpeg", 
-      quality: 1.0
-    }, 
-    html2canvas: { 
-      scale: 3,
-      useCORS: true,
-      allowTaint: true,
-      logging: true,
-      backgroundColor: '#ffffff',
-      width: 900,
-      height: container.scrollHeight,
-      scrollY: 0,
-      scrollX: 0,
-      windowWidth: 900,
-      windowHeight: container.scrollHeight
-    }, 
-    jsPDF: { 
-      unit: "mm", 
-      format: "a4", 
-      orientation: "landscape"
+  const handleRoomChange = (roomId) => {
+    setSelectedRoomId(roomId);
+    if (!roomId) return;
+    const room = classrooms.find(r => r.id === parseInt(roomId));
+    if (room) {
+      setRows(room.rows); setCols(room.cols); setBrokenSeats(room.broken_seats || ""); setBlockWidth(room.block_width || 1);
+      if(showToast) showToast(`Loaded ${room.name}`, "success");
     }
   };
 
-  // CRITICAL: Wait longer for fonts and render
-  setTimeout(() => {
-    console.log('🔄 Starting capture in 2 seconds...');
-    loadingText.innerHTML = `
-      <div>📸 Capturing content...</div>
-      <div style="font-size: 14px; margin-top: 10px;">Almost done!</div>
-    `;
-    
-    setTimeout(() => {
-      console.log('📸 Capturing now...');
-      
-      window.html2pdf()
-        .set(opt)
-        .from(container)
-        .toPdf()
-        .get('pdf')
-        .then((pdf) => {
-          console.log('✅ PDF object created');
-          console.log('Pages:', pdf.internal.getNumberOfPages());
-          console.log('Page size:', pdf.internal.pageSize);
-          return pdf;
-        })
-        .outputPdf('blob')
-        .then((pdfBlob) => {
-          console.log('📦 PDF Blob size:', pdfBlob.size, 'bytes');
-          
-          if (pdfBlob.size < 1000) {
-            throw new Error('PDF is too small - likely empty!');
-          }
-          
-          // Download
-          const url = URL.createObjectURL(pdfBlob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'seating_arrangement.pdf';
-          document.body.appendChild(a);
-          a.click();
-          
-          setTimeout(() => {
-            URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-          }, 100);
-          
-          console.log('✅✅✅ PDF downloaded!');
-          return pdfBlob;
-        })
-        .then(() => {
-          // Cleanup
-          if (document.body.contains(container)) {
-            document.body.removeChild(container);
-          }
-          if (document.body.contains(overlay)) {
-            document.body.removeChild(overlay);
-          }
-          if (document.body.contains(loadingText)) {
-            document.body.removeChild(loadingText);
-          }
-          
-          setPdfLoading(false);
-          alert('✅ PDF downloaded successfully!\n\nCheck your Downloads folder for "seating_arrangement.pdf"');
-        })
-        .catch((err) => {
-          console.error('❌ PDF Error:', err);
-          console.error('Error details:', {
-            message: err.message,
-            stack: err.stack
-          });
-          
-          // Cleanup
-          if (document.body.contains(container)) {
-            document.body.removeChild(container);
-          }
-          if (document.body.contains(overlay)) {
-            document.body.removeChild(overlay);
-          }
-          if (document.body.contains(loadingText)) {
-            document.body.removeChild(loadingText);
-          }
-          
-          setPdfLoading(false);
-          alert('❌ PDF generation failed!\n\nError: ' + err.message + '\n\nTry the Server-Side option instead.');
-        });
-    }, 2000); // Wait 2 more seconds after initial render
-  }, 1000); // Wait 1 second for initial render
-}
+  const updateBatch = (i, f, v) => {
+    const u = [...batchConfigs]; u[i][f] = v; setBatchConfigs(u);
+  };
 
-  // SERVER-SIDE PDF (Using your pdf_gen.py)
-  async function downloadPdfServerSide() {
-    if (!webData) {
-      alert('No seating data available. Generate chart first.');
-      return;
-    }
+  // --- LOGIC: PREPARE PAYLOAD ---
+  const preparePayload = () => {
+    const startRolls = {};
+    const batchLabels = {};
+    const batchColors = {};
+    batchConfigs.forEach((b, i) => { startRolls[i+1] = b.startRoll; batchLabels[i+1] = b.label; batchColors[i+1] = b.color; });
 
-    setPdfLoading(true);
+    return {
+      room_id: selectedRoomId,
+      rows, cols, block_width: blockWidth, broken_seats: brokenSeats,
+      num_batches: numBatches, batch_by_column: batchByColumn, enforce_no_adjacent_batches: enforceNoAdjacentBatches,
+      use_demo_db: useDemoDb, start_rolls: startRolls, batch_labels: batchLabels, batch_colors: batchColors
+    };
+  };
 
+  // --- LOGIC: GENERATE ---
+  const generate = async () => {
+    setLoading(true); setError(null);
     try {
-      console.log('📄 Requesting server-side PDF...');
-      const pdfPayload = {
-        ...buildPayload(),
-        seating: webData.seating,
-        metadata: webData.metadata
-      };
-      console.log('Sending PDF payload:', pdfPayload);
-      
-      const response = await fetch('/api/generate-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(webData),
+      const res = await fetch("http://localhost:5000/api/generate-seating", { 
+        method: "POST", headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify(preparePayload()) 
       });
+      const data = await res.json();
+      if(!res.ok) throw new Error(data.error);
+      setWebData(data);
+      setTimeout(() => chartRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+    } catch (e) { if(showToast) showToast(e.message, "error"); } 
+    finally { setLoading(false); }
+  };
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'PDF generation failed');
-      }
+  // --- LOGIC: CONSTRAINTS ---
+  const showConstraints = async () => {
+    try {
+        const res = await fetch("http://localhost:5000/api/constraints-status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(preparePayload()) });
+        const data = await res.json();
+        const body = data.constraints ? data.constraints.map(c => `${c.satisfied ? '✅' : '❌'} ${c.name}`).join("\n") : "No constraints data";
+        alert(`Constraints:\n\n${body}`);
+    } catch (e) { alert("Error checking constraints"); }
+  };
 
-      const blob = await response.blob();
-      
-      if (blob.size === 0) {
-        throw new Error('PDF file is empty');
-      }
+  // --- LOGIC: RESET DB ---
+  const handleResetDatabase = async () => {
+    if (!window.confirm("⚠️ DANGER: Delete ALL student data?")) return;
+    setResetting(true);
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch("http://localhost:5000/api/reset-data", { method: "POST", headers: token ? { 'Authorization': `Bearer ${token}` } : {} });
+        if (res.ok) { if (showToast) showToast("Database cleared", "success"); setWebData(null); }
+    } catch (e) { alert(e.message); } finally { setResetting(false); }
+  };
 
-      console.log(`✅ PDF received: ${blob.size} bytes`);
+  // --- LOGIC: PDF DOWNLOAD (RESTORED FULLY) ---
+  const downloadPdf = async (type) => {
+    if(!webData) { if(showToast) showToast("Generate first", "error"); return; }
+    setPdfLoading(true);
+    
+    if(type==='client') {
+       // --- CLIENT SIDE (html2pdf) ---
+       if(!window.html2pdf) { alert("html2pdf missing"); setPdfLoading(false); return; }
+       
+       const container = document.createElement("div");
+       container.style.cssText = "width:1100px; padding:40px; background:#fff; color:#000; font-family:Arial,sans-serif;";
+       
+       const title = document.createElement("h1"); title.innerText = "Seating Plan"; title.style.textAlign = "center";
+       container.appendChild(title);
+       
+       const info = document.createElement("div"); 
+       info.innerText = `Room: ${classrooms.find(r=>r.id===parseInt(selectedRoomId))?.name || 'Manual'} | Date: ${new Date().toLocaleDateString()}`;
+       info.style.textAlign = "center"; info.style.marginBottom = "20px";
+       container.appendChild(info);
+       
+       const grid = document.createElement("div");
+       grid.style.cssText = `display:grid; grid-template-columns:repeat(${cols}, 1fr); gap:4px; border:2px solid #000; padding:10px;`;
+       
+       webData.seating.flat().forEach(seat => {
+          const el = document.createElement("div");
+          el.style.cssText = `border:1px solid #ccc; min-height:60px; display:flex; flex-direction:column; align-items:center; justify-content:center; background-color:${seat.color||'#fff'}; -webkit-print-color-adjust:exact;`;
+          if (seat.is_broken) { el.style.backgroundColor="#fee2e2"; el.innerHTML = `<b style='color:red'>X</b>`; }
+          else if (!seat.is_unallocated) { el.innerHTML = `<div style='font-weight:bold;font-size:12px'>${seat.roll_number}</div><div style='font-size:9px'>Set ${seat.paper_set}</div>`; }
+          grid.appendChild(el);
+       });
+       
+       container.appendChild(grid);
+       container.style.position='fixed'; container.style.left='-10000px'; container.style.top='0';
+       document.body.appendChild(container);
+       
+       const opt = { margin: 10, filename: `seating_${Date.now()}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } };
+       
+       setTimeout(() => {
+           window.html2pdf().set(opt).from(container).save().then(() => { document.body.removeChild(container); setPdfLoading(false); });
+       }, 500);
 
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `seating_arrangement_server_${new Date().getTime()}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      
-      console.log('✅ PDF downloaded successfully (server-side)');
-      
-    } catch (error) {
-      console.error('❌ Server PDF Error:', error);
-      alert(`Server-side PDF generation failed: ${error.message}`);
-    } finally {
-      setPdfLoading(false);
-    }
-  }
-
-  // MAIN DOWNLOAD - Auto-detects best method
-  function downloadPdf() {
-    if (!webData) {
-      alert('No seating data available. Generate chart first.');
-      return;
-    }
-
-    if (window.html2pdf) {
-      downloadPdfClientSide();
     } else {
-      console.log('⚠️ html2pdf not available, using server-side generation');
-      downloadPdfServerSide();
+       // --- SERVER SIDE (ReportLab) ---
+       try {
+         const payload = { ...preparePayload(), seating: webData.seating, metadata: webData.metadata };
+         const res = await fetch('http://localhost:5000/api/generate-pdf', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+         if (!res.ok) throw new Error('Server failed');
+         const blob = await res.blob();
+         const url = window.URL.createObjectURL(blob);
+         const a = document.createElement('a'); a.href = url; a.download = 'seating_hq.pdf'; a.click();
+         window.URL.revokeObjectURL(url);
+       } catch(e) { alert(e.message); } finally { setPdfLoading(false); }
     }
-  }
+  };
 
-  function renderSeat(seat, rIdx, cIdx) {
-    if (!seat) {
-      return (
-        <div
-          key={`${rIdx}-${cIdx}`}
-          className="p-2 border rounded bg-gray-50 dark:bg-gray-950 flex flex-col items-center justify-center text-xs min-h-[84px] min-w-[84px]"
-        >
-          &nbsp;
-        </div>
-      );
-    }
-    if (seat.is_broken) {
-      return (
-        <div
-          key={`${rIdx}-${cIdx}`}
-          className="p-3 min-w-[84px] min-h-[84px] rounded-lg flex flex-col items-center justify-center text-xs border-2 border-red-400 dark:border-red-600 bg-red-100 dark:bg-red-900 shadow-md transition-all duration-200 overflow-hidden"
-        >
-          <div className="font-bold text-red-800 dark:text-red-300 text-sm">BROKEN</div>
-          <div className="text-[10px] text-red-700 dark:text-red-400 mt-1">{seat.position}</div>
-        </div>
-      );
-    }
-    if (seat.is_unallocated) {
-      return (
-        <div
-          key={`${rIdx}-${cIdx}`}
-          className="p-3 min-w-[84px] min-h-[84px] rounded-lg flex flex-col items-center justify-center text-xs border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 shadow-md transition-all duration-200 overflow-hidden"
-        >
-          <div className="font-semibold text-gray-600 dark:text-gray-300 text-sm">Batch {seat.batch}</div>
-          <div className="font-bold text-gray-500 dark:text-gray-400 text-sm">UNALLOCATED</div>
-          <div className="text-[10px] text-gray-500 dark:text-gray-400">{seat.position}</div>
-        </div>
-      );
-    }
-    const color = seat.color || "#ffffff";
-    const label = seat.batch_label || (seat.batch ? `Batch ${seat.batch}` : "");
-    const rn = seat.roll_number || "";
-    const set = seat.paper_set || "";
-    // Note: Tailwind dark mode classes won't apply to inline `style={{ background: color }}`
-    // You should ensure the text color is legible regardless of the batch color.
-    // For now, we'll assume a dark text on the seat color, but add dark mode defaults for the seat itself.
-
-    return (
-      <div
-        key={`${rIdx}-${cIdx}`}
-        // Added dark:border-gray-500 for consistency
-        className="p-3 min-w-[84px] min-h-[84px] rounded-lg flex flex-col items-center justify-center text-xs border border-gray-300 dark:border-gray-500 shadow-md transition-all duration-200 overflow-hidden"
-        style={{ background: color }}
-      >
-        {/* Force dark text for readability over background color */}
-        <div className="text-[11px] font-semibold text-center text-gray-900">{label}</div>
-        <div className="text-sm font-bold break-words text-center mt-1 text-gray-900">{rn}</div>
-        {set && <div className="text-[10px] opacity-80 mt-1 text-gray-800">Set: {set}</div>}
-        <div className="text-[10px] opacity-70 mt-1 text-gray-800">{seat.position}</div>
-      </div>
-    );
-  }
-
-  // Common styles for dynamic inputs
-  const inputBaseClasses = "mt-1 w-full p-2 border rounded-md transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500";
-  // Light Mode Styles: White background, Dark text, Gray border
-  const inputLightClasses = "bg-white border-gray-300 text-gray-900 placeholder-gray-400";
-  // Dark Mode Styles: Dark Gray background, White text, Dark border
-  const inputDarkClasses = "dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400";
-  
-  const inputClasses = `${inputBaseClasses} ${inputLightClasses} ${inputDarkClasses}`;
+  // Render Seat Helper
+  const renderSeat = (seat, rIdx, cIdx) => (
+    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: (rIdx*cols+cIdx)*0.002 }} key={`${rIdx}-${cIdx}`} 
+      className={`aspect-square rounded-xl border flex flex-col items-center justify-center p-0.5 shadow-sm transition-all hover:scale-110 z-10 relative ${
+        seat.is_broken ? 'bg-red-50 border-red-500 text-red-500' :
+        seat.is_unallocated ? 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-300' :
+        'bg-white dark:bg-gray-700 border-transparent text-white'
+      }`}
+      style={!seat.is_broken && !seat.is_unallocated ? { backgroundColor: seat.color } : {}}
+      title={!seat.is_unallocated ? `Roll: ${seat.roll_number}` : 'Empty'}
+    >
+      {!seat.is_broken && !seat.is_unallocated && (
+          <>
+            <span className="text-[8px] font-bold uppercase opacity-80">{seat.batch_label || `B${seat.batch}`}</span>
+            <span className="text-[10px] md:text-xs font-black mt-0.5">{seat.roll_number}</span>
+          </>
+      )}
+      {seat.is_broken && <span className="text-xs font-black">X</span>}
+    </motion.div>
+  );
 
   return (
-    // MAIN WRAPPER: Solid, theme-aware background
-    <div className="min-h-screen bg-white dark:bg-gray-900 p-6 transition-colors duration-200">
-      <div className="max-w-6xl mx-auto">
-        {/* MAIN HEADING TEXT COLOR */}
-        <h1 className="text-3xl font-bold text-center mb-6 text-gray-800 dark:text-white">Seating Arrangement — Allocation</h1>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          {/* INPUTS PANEL */}
-          {/* INPUT PANEL BACKGROUND */}
-          <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow p-6 transition-colors duration-200">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-8 font-sans transition-colors">
+      <div className="max-w-[1600px] mx-auto grid grid-cols-1 xl:grid-cols-12 gap-8">
+        
+        {/* CONFIG SIDEBAR */}
+        <Card className="xl:col-span-4 h-full flex flex-col overflow-hidden bg-white dark:bg-gray-800">
+           <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-b dark:border-gray-700">
+             <h2 className="text-xl font-bold text-blue-900 dark:text-blue-100 flex items-center gap-2"><Zap size={20} className="text-amber-500"/> Allocation Cockpit</h2>
+           </div>
+           
+           <div className="p-6 space-y-6 flex-1 overflow-y-auto custom-scrollbar">
+              {/* Room Selection */}
               <div>
-                {/* LABEL TEXT COLOR */}
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Rows</label>
-                {/* INPUT FIELD STYLES - Updated */}
-                <input type="number" className={inputClasses} value={rows} onChange={(e)=>setRows(Math.max(1, parseInt(e.target.value||1)))} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Columns</label>
-                <input type="number" className={inputClasses} value={cols} onChange={(e)=>setCols(Math.max(1, parseInt(e.target.value||1)))} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Number of Batches</label>
-                <input type="number" className={inputClasses} value={numBatches} onChange={(e)=>setNumBatches(Math.max(1, Math.min(50, parseInt(e.target.value||1))))} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Block Width (cols)</label>
-                <input type="number" className={inputClasses} value={blockWidth} onChange={(e)=>setBlockWidth(Math.max(1, parseInt(e.target.value||1)))} />
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 block">1. Venue</label>
+                <select value={selectedRoomId} onChange={e=>handleRoomChange(e.target.value)} className="w-full h-12 px-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg font-bold dark:text-white outline-none focus:ring-2 focus:ring-blue-500">
+                   <option value="">-- Manual Config --</option>
+                   {classrooms.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
+                </select>
+                {selectedRoomId && <div className="mt-2 flex gap-2 text-xs font-mono text-gray-500"><span className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{rows}x{cols}</span><span className="bg-red-50 dark:bg-red-900/20 text-red-500 px-2 py-1 rounded">{brokenSeats.split(',').filter(Boolean).length} Broken</span></div>}
               </div>
 
-              <div className="col-span-1 md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Broken Seats (row-col)</label>
-                <input type="text" className={inputClasses} placeholder="e.g., 1-3,2-1" value={brokenSeats} onChange={(e)=>setBrokenSeats(e.target.value)} />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Separate entries with commas; rows/cols are 1-based.</p>
-              </div>
-
-              <div className="col-span-1 md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Batch Student Counts (optional)</label>
-                <input type="text" className={inputClasses} placeholder="1:35,2:30,3:25" value={batchStudentCounts} onChange={(e)=>setBatchStudentCounts(e.target.value)} />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Format: batchIndex:count, separated by commas. Shows unallocated if total &lt; available seats</p>
-              </div>
-
-              <div className="col-span-1 md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Per-batch Start Roll Strings (optional)</label>
+              {/* Batch Configuration */}
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                   <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">2. Batches</label>
+                   <input type="number" value={numBatches} onChange={e=>setNumBatches(Math.max(1, parseInt(e.target.value)||1))} className="w-12 h-8 text-center border rounded bg-gray-50 dark:bg-gray-700 dark:text-white font-bold" />
+                </div>
                 <div className="space-y-2">
-                  {Array.from({ length: numBatches }).map((_, i) => {
-                    const idx = i + 1;
-                    return (
-                      <div key={idx}>
-                        {/* INPUT LABEL TEXT COLOR */}
-                        <label className="text-xs text-gray-600 dark:text-gray-400">Batch {idx}</label>
-                        {/* INPUT FIELD STYLES - Updated */}
-                        <input
-                          type="text"
-                          className={inputClasses}
-                          placeholder={`e.g., BTCS24O${1000 + (idx - 1) * 100}`}
-                          value={batchStartRolls[idx] || ""}
-                          onChange={(e) => setBatchStartRolls((prev) => ({ ...prev, [idx]: e.target.value }))}
-                        />
+                   {batchConfigs.map((b, i) => (
+                     <div key={b.id} className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-2">
+                        <div className="flex gap-2">
+                          <input value={b.label} onChange={e=>updateBatch(i,'label',e.target.value)} className="flex-1 h-8 px-2 text-xs border rounded bg-white dark:bg-gray-800 dark:text-white font-bold" placeholder="Label" />
+                          <input type="color" value={b.color} onChange={e=>updateBatch(i,'color',e.target.value)} className="w-8 h-8 p-0 border-0 rounded cursor-pointer" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                           <Hash size={12} className="text-gray-400"/>
+                           <input value={b.startRoll} onChange={e=>updateBatch(i,'startRoll',e.target.value)} className="flex-1 h-8 px-2 text-xs border rounded bg-white dark:bg-gray-800 dark:text-white font-mono" placeholder="Start Roll" />
+                        </div>
+                     </div>
+                   ))}
+                </div>
+              </div>
+
+              {/* Toggles */}
+              <div className="flex flex-col gap-2 pt-4 border-t dark:border-gray-700">
+                 <label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase cursor-pointer"><input type="checkbox" checked={useDemoDb} onChange={e=>setUseDemoDb(e.target.checked)} className="rounded text-blue-600"/> Use Student DB</label>
+                 <label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase cursor-pointer"><input type="checkbox" checked={batchByColumn} onChange={e=>setBatchByColumn(e.target.checked)} className="rounded text-blue-600"/> Fill Columns</label>
+                 <label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase cursor-pointer"><input type="checkbox" checked={enforceNoAdjacentBatches} onChange={e=>setEnforceNoAdjacentBatches(e.target.checked)} className="rounded text-blue-600"/> Enforce Gap</label>
+              </div>
+
+              {/* Danger Zone */}
+              <div className="pt-4 border-t dark:border-gray-700">
+                <Button onClick={handleResetDatabase} variant="destructive" className="w-full h-10 text-xs uppercase" disabled={resetting}>
+                  <Trash2 size={14} className="mr-2"/> {resetting ? 'Resetting...' : 'Reset All Data'}
+                </Button>
+              </div>
+           </div>
+           
+           <div className="p-6 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+              <Button onClick={generate} disabled={loading} className="w-full h-12 bg-blue-600 text-white hover:bg-blue-700 shadow-lg mb-2">
+                {loading ? <Loader2 className="animate-spin mr-2"/> : <Play className="mr-2" size={16}/>} Generate Plan
+              </Button>
+           </div>
+        </Card>
+
+        {/* VISUALIZATION */}
+        <Card className="xl:col-span-8 h-full bg-white dark:bg-gray-800 flex flex-col relative overflow-hidden p-6" ref={chartRef}>
+           <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-black dark:text-white uppercase tracking-tighter">Live Preview</h2>
+              {webData && (
+                <div className="flex gap-2">
+                   <Button onClick={showConstraints} className="h-9 px-4 bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300 text-xs font-bold">Rules</Button>
+                   <div className="relative group">
+                      <Button className="h-9 px-4 bg-green-600 text-white hover:bg-green-700 text-xs font-bold flex gap-2"><Download size={14}/> Export</Button>
+                      <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 shadow-xl rounded-xl border border-gray-200 dark:border-gray-700 hidden group-hover:block z-50 p-2">
+                        <button onClick={()=>downloadPdf('client')} className="w-full text-left p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-xs font-bold dark:text-white">Client PDF (Fast)</button>
+                        <button onClick={()=>downloadPdf('server')} className="w-full text-left p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-xs font-bold dark:text-white">Server PDF (HQ)</button>
                       </div>
-                    );
-                  })}
+                   </div>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Format: batchIndex:ROLLSTRING, separated by commas. Example: 1:BTCS24O1135,2:BTCD24O2001</p>
-              </div>
-
-              <div className="col-span-1 md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Batch Colors (optional)</label>
-                <input type="text" className={inputClasses} placeholder="1:#DBEAFE,2:#DCFCE7" value={batchColorsInput} onChange={(e)=>setBatchColorsInput(e.target.value)} />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Format: batchIndex:#HEXCOLOR, separated by commas</p>
-              </div>
-
-              <div className="col-span-1 md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Batch Labels (optional)</label>
-                <input type="text" className={inputClasses} placeholder="1:CSE,2:ECE,3:IT" value={batchLabelsInput} onChange={(e)=>setBatchLabelsInput(e.target.value)} />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Human readable branch names. Format: batchIndex:LABEL</p>
-              </div>
-
-              <div className="col-span-1">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fill Batches By Column</label>
-                <div className="flex items-center gap-3">
-                  <input type="checkbox" checked={batchByColumn} onChange={(e)=>setBatchByColumn(e.target.checked)} className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-blue-400" />
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Column-major assignment</span>
-                </div>
-              </div>
-
-              <div className="col-span-1">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Enforce No Adjacent Same Batch</label>
-                <div className="flex items-center gap-3">
-                  <input type="checkbox" checked={enforceNoAdjacentBatches} onChange={(e)=>setEnforceNoAdjacentBatches(e.target.checked)} className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-blue-400" />
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Optional constraint</span>
-                </div>
-              </div>
-
-              <div className="col-span-1 md:col-span-2 mt-4">
-                <div className="flex gap-3 flex-wrap items-center">
-                  {/* BUTTONS: Adjusted hover/focus colors for dynamic themes */}
-                  <button onClick={generate} disabled={loading} className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 dark:disabled:bg-gray-600 text-white px-6 py-2 rounded font-medium transition shadow-sm"> 
-                    {loading ? "Generating..." : "Generate Chart"}
-                  </button>
-                  
-                  {/* Main PDF Button */}
-                  <button 
-                    onClick={downloadPdf}
-                    disabled={!webData || pdfLoading}
-                    className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 dark:disabled:bg-gray-600 text-white px-6 py-2 rounded font-medium transition inline-flex items-center gap-2 shadow-sm"
-                  >
-                    {pdfLoading ? (
-                      <>
-                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span>Generating...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>📥</span>
-                        <span>Download PDF</span>
-                      </>
-                    )}
-                  </button>
-
-                  {/* PDF Options Dropdown */}
-                  <div className="relative group">
-                    <button 
-                      disabled={!webData || pdfLoading}
-                      className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 dark:disabled:bg-gray-600 text-white px-4 py-2 rounded font-medium transition shadow-sm"
-                      title="PDF Options"
-                    >
-                      ⚙️
-                    </button>
-                    
-                    <div className="absolute left-0 mt-2 w-56 bg-white dark:bg-gray-700 rounded-lg shadow-xl border border-gray-200 dark:border-gray-600 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 z-20">
-                      <button
-                        onClick={downloadPdfClientSide}
-                        disabled={!webData || pdfLoading}
-                        className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-t-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <div className="font-semibold text-sm text-gray-800 dark:text-gray-200">🌐 Client-Side PDF</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">Fast, browser-based (html2pdf)</div>
-                      </button>
-                      <div className="border-t border-gray-100 dark:border-gray-600"></div>
-                      <button
-                        onClick={downloadPdfServerSide}
-                        disabled={!webData || pdfLoading}
-                        className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-b-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <div className="font-semibold text-sm text-gray-800 dark:text-gray-200">🖥️ Server-Side PDF</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">Professional (ReportLab)</div>
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <button onClick={showConstraints} className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded font-medium transition shadow-sm">
-                    View Constraints
-                  </button>
-                </div>
-              </div>
-
-              <div className="col-span-1 md:col-span-2">
-                <label className="inline-flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={useDemoDb} onChange={(e)=>setUseDemoDb(e.target.checked)} className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-blue-400" />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Use demo DB for enrollments/labels</span>
-                </label>
-              </div>
-            
-
-              {error && <div className="col-span-1 md:col-span-2 mt-2 text-red-600 dark:text-red-400 font-medium text-sm">{error}</div>}
-
-              {/* DANGER ZONE - DB RESET */}
-                <div className="col-span-1 md:col-span-2 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-                    <div className="flex items-center justify-between">
-                    <div>
-                        <h3 className="text-sm font-bold text-red-600 dark:text-red-400 flex items-center gap-2">
-                        ⚠️ Danger Zone
-                        </h3>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Clear all student data and reset the database.
-                        </p>
-                    </div>
-                    <button 
-                        onClick={handleResetDatabase}
-                        disabled={resetting}
-                        className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 border border-red-200 rounded text-sm font-medium transition dark:bg-red-900/30 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-900/50"
-                    >
-                        {resetting ? "Clearing..." : "Reset Database"}
-                    </button>
-                    </div>
-                </div>
-
-            </div>
-          </div>
-
-          {/* QUICK SUMMARY PANEL */}
-          <div className="lg:col-span-1">
-             {/* SUMMARY CARD BACKGROUND - Dynamic */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 sticky top-6 transition-colors duration-200">
-              <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-4">Quick Summary</h3>
-              <div className="space-y-3 text-sm text-gray-600 dark:text-gray-300">
-                <div className="flex justify-between">
-                  <span>Total rows:</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">{rows}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Total cols:</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">{cols}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Total seats:</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">{rows * cols}</span>
-                </div>
-                <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
-                <div className="flex justify-between">
-                  <span>Batch count:</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">{numBatches}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Block width:</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">{blockWidth}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Using demo DB:</span>
-                  <span className={`font-semibold ${useDemoDb ? "text-green-600 dark:text-green-400" : "text-orange-600 dark:text-orange-400"}`}>
-                    {useDemoDb ? "Yes" : "No"}
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <button 
-                  onClick={() => {
-                    setRows(8); setCols(10); setNumBatches(3); setBlockWidth(3);
-                    setBrokenSeats(""); setBatchStudentCounts(""); setBatchLabelsInput("");
-                    setUseDemoDb(true); setBatchStartRolls({}); setBatchRollNumbers({});
-                    setBatchColorsInput(""); setBatchByColumn(true);
-                    setWebData(null); setError(null);
-                  }}
-                  className="w-full py-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition"
-                >
-                  Reset to defaults
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* OUTPUT SECTION - Chart */}
-        <div ref={chartRef}>
-          {webData && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 overflow-x-auto transition-colors duration-200">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold text-gray-800 dark:text-white">Generated Layout</h3>
-                <div className="text-sm text-gray-500 dark:text-gray-400">
-                   {/* Validation Status */}
-                  {webData.validation && !webData.validation.is_valid ? (
-                    <span className="text-red-500 font-bold">⚠️ Constraints Violated</span>
-                  ) : (
-                    <span className="text-green-600 dark:text-green-400 font-bold">✓ Valid Layout</span>
-                  )}
-                </div>
-              </div>
-              
-              <div 
-                className="grid gap-2 mx-auto"
-                style={{
-                  gridTemplateColumns: `repeat(${cols}, minmax(84px, 1fr))`,
-                  width: "max-content"
-                }}
-              >
-                {webData.seating.map((row, rIdx) => 
-                  row.map((seat, cIdx) => renderSeat(seat, rIdx, cIdx))
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
+              )}
+           </div>
+           
+           {!webData ? (
+             <div className="flex-1 flex flex-col items-center justify-center text-gray-300 dark:text-gray-600">
+               <Layout size={64} className="mb-4 opacity-20"/>
+               <p className="font-bold uppercase tracking-widest text-xs">Ready to Generate</p>
+             </div>
+           ) : (
+             <div className="flex-1 overflow-auto p-4 custom-scrollbar" id="seat-map-grid">
+               <div className="w-1/2 h-1 bg-gray-200 dark:bg-gray-700 mx-auto rounded-full mb-8 relative"><div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-black text-gray-400 uppercase tracking-[0.5em]">Board</div></div>
+               <div className="grid gap-2 mx-auto" style={{ gridTemplateColumns: `repeat(${cols}, minmax(45px, 1fr))`, width: 'fit-content' }}>
+                  {webData.seating.map((row, rIdx) => row.map((seat, cIdx) => renderSeat(seat, rIdx, cIdx)))}
+               </div>
+             </div>
+           )}
+        </Card>
       </div>
+      <style>{`.custom-scrollbar::-webkit-scrollbar { width: 6px; } .custom-scrollbar::-webkit-scrollbar-track { background: transparent; } .custom-scrollbar::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; } .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #374151; }`}</style>
     </div>
   );
 };
-
 export default AllocationPage;
