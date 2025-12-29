@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Layout,
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import PillNav from './PillNav';
 
 const Navbar = ({ currentPage, setCurrentPage }) => {
   const { user, logout } = useAuth();
@@ -29,18 +30,30 @@ const Navbar = ({ currentPage, setCurrentPage }) => {
     setMobileMenuOpen(false);
   };
 
-  const navItems = user
-    ? [
-        { name: 'Dashboard', page: 'dashboard', icon: LayoutDashboard },
-        { name: 'Create', page: 'create-plan', icon: Plus },
-        { name: 'Template Editor', page: 'template-editor', icon: FileEdit },
-        { name: 'Attendance', page: 'attendence', icon: ClipboardList },
-        { name: 'Feedback', page: 'feedback', icon: MessageSquare },
-        { name: 'About us', page: 'aboutus', icon: Info }
-      ]
-    : [];
+  const navItems = useMemo(() => {
+    if (!user) return [];
+    return [
+      { name: 'Dashboard', page: 'dashboard', icon: LayoutDashboard },
+      { name: 'Create', page: 'create-plan', icon: Plus },
+      { name: 'Template Editor', page: 'template-editor', icon: FileEdit },
+      { name: 'Attendance', page: 'attendence', icon: ClipboardList },
+      { name: 'Feedback', page: 'feedback', icon: MessageSquare },
+      { name: 'About us', page: 'aboutus', icon: Info }
+    ];
+  }, [user]);
 
   const isActive = (page) => currentPage === page;
+
+  const pillItems = useMemo(
+    () =>
+      navItems.map((item) => ({
+        label: item.name,
+        value: item.page,
+        icon: item.icon,
+        ariaLabel: item.name
+      })),
+    [navItems]
+  );
 
   return (
     <>
@@ -71,37 +84,21 @@ const Navbar = ({ currentPage, setCurrentPage }) => {
 
           {/* Navigation Links */}
           {user && (
-            <div className="flex items-center gap-2 bg-gray-100/30 dark:bg-gray-700/30 p-1.5 rounded-xl border border-gray-200/60 dark:border-gray-600/60 backdrop-blur-sm">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const active = isActive(item.page);
-
-                return (
-                  <motion.button
-                    key={item.page}
-                    onClick={() => setCurrentPage(item.page)}
-                    className={`relative px-3 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2 font-semibold text-xs uppercase tracking-wide ${
-                      active
-                        ? 'text-gray-900 dark:text-white'
-                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
-                    }`}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span>{item.name}</span>
-
-                    {active && (
-                      <motion.div
-                        layoutId="nav-indicator"
-                        className="absolute inset-0 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800/60 -z-10"
-                        transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-                      />
-                    )}
-                  </motion.button>
-                );
-              })}
-            </div>
+            <PillNav
+              initialLoadAnimation
+              className="ml-2"
+              items={pillItems}
+              activeValue={currentPage}
+              onSelect={(page) => setCurrentPage(page)}
+              baseColor="rgb(var(--pillnav-base) / 0.35)"
+              pillColor={
+                theme === 'light'
+                  ? 'rgb(var(--pillnav-pill) / 0.12)'
+                  : 'rgb(var(--pillnav-pill) / 1)'
+              }
+              pillTextColor="rgb(var(--pillnav-pill-text) / 1)"
+              hoveredPillTextColor="rgb(var(--pillnav-hover-text) / 1)"
+            />
           )}
 
           {/* Actions */}

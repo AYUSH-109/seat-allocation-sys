@@ -55,6 +55,13 @@ body {
   --color-foreground: 17, 24, 39; /* gray-900 */
   --color-muted-foreground: 107, 114, 128; /* gray-500 */
   --color-accent: 251, 146, 60; /* orange-400 for highlights */
+
+  /* PillNav theme variables */
+  --pillnav-base: 255 255 255;
+  --pillnav-pill: var(--color-primary);
+  --pillnav-pill-text: 5 5 5;
+  --pillnav-hover-text: 5 5 5;
+  --pillnav-hover-pill: var(--color-primary);
 }
 
 .dark {
@@ -74,6 +81,13 @@ body {
   --color-foreground: 243, 244, 246; /* gray-100 */
   --color-muted-foreground: 156, 163, 175; /* gray-400 */
   --color-accent: 251, 146, 60; /* orange-400 for highlights */
+
+  /* PillNav theme variables */
+  --pillnav-base: 5 5 5;
+  --pillnav-pill: var(--color-secondary);
+  --pillnav-pill-text: var(--color-foreground);
+  --pillnav-hover-text: 5 5 5;
+  --pillnav-hover-pill: var(--color-primary);
 }
 
 .font-bogle {
