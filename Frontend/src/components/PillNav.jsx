@@ -12,6 +12,8 @@ const PillNav = ({
   hoverPillColor = 'orange',
   hoveredPillTextColor = '#fff',
   pillTextColor = '#fff',
+  pillBorderColor = 'rgba(0, 0, 0, 0.15)',
+  groupBorderColor = 'rgba(0, 0, 0, 0.15)',
   initialLoadAnimation = true
 }) => {
   const circleRefs = useRef([]);
@@ -129,7 +131,9 @@ const PillNav = ({
       className={`relative items-center rounded-full hidden md:flex ${className}`}
       style={{
         height: '42px',
-        background: baseColor
+        background: baseColor,
+        border: `1px solid ${groupBorderColor}`,
+        padding: '2px'
       }}
     >
       <ul role="menubar" className="list-none flex items-stretch m-0 p-[3px] h-full gap-2">
@@ -145,7 +149,8 @@ const PillNav = ({
                 className="relative overflow-hidden inline-flex items-center justify-center h-full no-underline rounded-full box-border font-semibold text-[12px] uppercase cursor-pointer px-4"
                 style={{
                   background: pillColor,
-                  color: pillTextColor
+                  color: pillTextColor,
+                  border: `1px solid ${pillBorderColor}`
                 }}
                 aria-label={item.ariaLabel || item.label}
                 onMouseEnter={() => handleEnter(i)}
