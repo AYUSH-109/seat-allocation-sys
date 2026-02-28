@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Exam Invigilation Reporting System">
+    <title>Exam Invigilation Report</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Exam Invigilation Report</h1>
+            <p class="subtitle">Submit or Edit Exam Reports</p>
+        </header>
+
+        <main>
+            <!-- Alert/Message Box -->
+            <div id="alertBox" class="alert hidden">
+                <span id="alertMessage"></span>
+                <button class="close-btn" onclick="closeAlert()">&times;</button>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div id="loadingSpinner" class="spinner hidden">
+                <div class="spinner-circle"></div>
+                <p>Processing...</p>
+            </div>
+
+            <!-- Invigilation Form -->
+            <form id="invigilationForm" class="report-form">
+                <h2 id="formTitle">Submit New Report</h2>
+
+                <div class="form-group">
+                    <label for="examCode">Exam Code <span class="required">*</span></label>
+                    <input 
+                        type="text" 
+                        id="examCode" 
+                        name="examCode" 
+                        required 
+                        placeholder="e.g., CS101"
+                        maxlength="20"
+                    >
+                    <span class="error-message" id="examCodeError"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="examDate">Exam Date <span class="required">*</span></label>
+                    <input 
+                        type="date" 
+                        id="examDate" 
+                        name="examDate" 
+                        required
+                    >
+                    <span class="error-message" id="examDateError"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="session">Session <span class="required">*</span></label>
+                    <select id="session" name="session" required>
+                        <option value="">Select Session</option>
+                        <option value="Morning">Morning</option>
+                        <option value="Afternoon">Afternoon</option>
+                    </select>
+                    <span class="error-message" id="sessionError"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="roomNumber">Room Number <span class="required">*</span></label>
+                    <input 
+                        type="text" 
+                        id="roomNumber" 
+                        name="roomNumber" 
+                        required 
+                        placeholder="e.g., Room 101"
+                        maxlength="20"
+                    >
+                    <span class="error-message" id="roomNumberError"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="studentsPresent">Number of Students Present <span class="required">*</span></label>
+                    <input 
+                        type="number" 
+                        id="studentsPresent" 
+                        name="studentsPresent" 
+                        required 
+                        min="0"
+                        max="9999"
+                        placeholder="e.g., 30"
+                    >
+                    <span class="error-message" id="studentsPresentError"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="mainSheets">Number of Main Answer Sheets Used <span class="required">*</span></label>
+                    <input 
+                        type="number" 
+                        id="mainSheets" 
+                        name="mainSheets" 
+                        required 
+                        min="0"
+                        max="9999"
+                        placeholder="e.g., 30"
+                    >
+                    <span class="error-message" id="mainSheetsError"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="supplementarySheets">Number of Supplementary Sheets Used <span class="required">*</span></label>
+                    <input 
+                        type="number" 
+                        id="supplementarySheets" 
+                        name="supplementarySheets" 
+                        required 
+                        min="0"
+                        max="9999"
+                        placeholder="e.g., 5"
+                    >
+                    <span class="error-message" id="supplementarySheetsError"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="attendanceImage">Attendance Sheet Image(s) <span class="required">*</span></label>
+                    <div class="file-upload-wrapper">
+                        <input 
+                            type="file" 
+                            id="attendanceImage" 
+                            name="attendanceImage" 
+                            accept="image/*"
+                            multiple
+                            required
+                        >
+                        <div class="file-upload-display">
+                            <span id="fileNameDisplay">No file chosen</span>
+                            <button type="button" class="btn-secondary" onclick="document.getElementById('attendanceImage').click()">
+                                Choose File
+                            </button>
+                        </div>
+                    </div>
+                    <span class="error-message" id="attendanceImageError"></span>
+                    <div id="imagePreview" class="image-preview hidden"></div>
+                </div>
+
+                <input type="hidden" id="recordId" name="recordId">
+                <input type="hidden" id="existingImageUrl" name="existingImageUrl">
+
+                <div class="form-actions">
+                    <button type="submit" id="submitBtn" class="btn-primary">
+                        Submit Report
+                    </button>
+                    <button type="button" id="editBtn" class="btn-secondary">
+                        Edit Existing Report
+                    </button>
+                    <button type="button" id="resetBtn" class="btn-tertiary" onclick="resetForm()">
+                        Reset Form
+                    </button>
+                </div>
+            </form>
+
+            <!-- Edit Modal -->
+            <div id="editModal" class="modal hidden">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>Fetch Report for Editing</h2>
+                        <button class="close-btn" onclick="closeEditModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="editExamCode">Exam Code <span class="required">*</span></label>
+                            <input type="text" id="editExamCode" placeholder="e.g., CS101">
+                        </div>
+                        <div class="form-group">
+                            <label for="editExamDate">Exam Date <span class="required">*</span></label>
+                            <input type="date" id="editExamDate">
+                        </div>
+                        <div class="form-group">
+                            <label for="editSession">Session <span class="required">*</span></label>
+                            <select id="editSession">
+                                <option value="">Select Session</option>
+                                <option value="Morning">Morning</option>
+                                <option value="Afternoon">Afternoon</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="editRoomNumber">Room Number <span class="required">*</span></label>
+                            <input type="text" id="editRoomNumber" placeholder="e.g., Room 101">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn-primary" onclick="fetchReportForEdit()">
+                            Fetch Report
+                        </button>
+                        <button type="button" class="btn-tertiary" onclick="closeEditModal()">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; 2026 Exam Invigilation System. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script src="app.js?v=20260228-1"></script>
+</body>
+</html>
