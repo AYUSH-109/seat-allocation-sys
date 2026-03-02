@@ -107,7 +107,7 @@ def create_attendance_pdf(filename, student_list, batch_label, metadata, extract
     
     # Department header
     story.append(Paragraph(f"<u><b>{dept_header}</b></u>", header_style))
-    story.append(Spacer(1, 0.1*cm))
+    story.append(Spacer(1, 0.05*cm))
     
     degree = extracted_info.get('degree', 'B.Tech')
     
@@ -122,7 +122,7 @@ def create_attendance_pdf(filename, student_list, batch_label, metadata, extract
     title_style.alignment = 1
     title_style.textColor = colors.darkgreen
     story.append(Paragraph(f"<b>{attendance_exam_heading}</b>", title_style))
-    story.append(Spacer(1, 0.3*cm))
+    story.append(Spacer(1, 0.15*cm))
 
     info_style = styles['Normal'].clone('InfoStyle')
     info_data = [
@@ -134,10 +134,12 @@ def create_attendance_pdf(filename, student_list, batch_label, metadata, extract
     info_table = Table(info_data, colWidths=[10*cm, 8.5*cm])
     info_table.setStyle(TableStyle([
         ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ('TOPPADDING', (0,0), (-1,-1), 1),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 1),
         ('FONTNAME', (0,0), (-1,-1), 'Times-Roman')
     ]))
     story.append(info_table)
-    story.append(Spacer(1, 0.3*cm))
+    story.append(Spacer(1, 0.15*cm))
 
     table_headers = ["S. No.", "Name of the Student", "Enrolment No.", "Set A/ Set B", "Answer Booklet No.", "Signature"]
     data = [table_headers]
@@ -172,8 +174,10 @@ def create_attendance_pdf(filename, student_list, batch_label, metadata, extract
         ('FONTSIZE', (0, 0), (-1, -1), 10), 
         ('FONTNAME', (0, 0), (-1, -1), 'Times-Roman'),
         ('FONTNAME', (0, 0), (-1, 0), 'Times-Bold'),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 3),   # header row
+        ('TOPPADDING', (0, 0), (-1, 0), 3),       # header row
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 2),   # data rows — tight to maximise per page
+        ('TOPPADDING', (0, 1), (-1, -1), 2),       # data rows
         ('ALIGN', (1, 1), (1, -1), 'LEFT'),
     ]))
     story.append(attendance_table)
@@ -182,7 +186,8 @@ def create_attendance_pdf(filename, student_list, batch_label, metadata, extract
         [Paragraph(f"<b>No. of Students Registered = {len(student_list)}</b>", info_style)],
         [Paragraph("<b>No. of Students Appeared =</b>", info_style)],
         [Paragraph("<b>No. of Students Absent =</b>", info_style)],
-        [Paragraph("<b>No. of Students Detained =</b>", info_style)]
+        [Paragraph("<b>No. of Students Detained =</b>", info_style)],
+        [Paragraph("<b>No. of Supplementary Copy =</b>", info_style)]
     ]
     summary_table = Table(summary_data, colWidths=[total_table_width])
     summary_table.setStyle(TableStyle([

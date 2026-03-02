@@ -24,7 +24,7 @@ except ImportError:
 PDF_GEN_DIR = os.path.dirname(os.path.abspath(__file__))
 CACHE_DIR = os.path.join(PDF_GEN_DIR, "seat_plan_generated")
 IMAGE_PATH = os.path.join(PDF_GEN_DIR, "data", "banner.png")
-CUSTOM_PAGE_SIZE = (304 * mm, 235 * mm)
+CUSTOM_PAGE_SIZE = (364 * mm, 235 * mm)
 
 def seating_payload_digest(data: dict, user_id: str = 'system', template_name: str = 'default') -> str:
     """Create hash including user template configuration"""
@@ -219,7 +219,7 @@ def create_seating_pdf(filename="algo/pdf_gen/seat_plan_generated/seating_plan.p
     
     def header_and_footer(c, doc):
         c.saveState()
-        page_width, page_height = CUSTOM_PAGE_SIZE
+        page_width, page_height = dynamic_page_size
         BANNER_HEIGHT = 3.5 * cm
         CONTENT_WIDTH = page_width - doc.leftMargin - doc.rightMargin
         
@@ -347,9 +347,30 @@ def create_seating_pdf(filename="algo/pdf_gen/seat_plan_generated/seating_plan.p
     
     print(f"📊 PDF Generation - Cols: {num_cols}, Block Structure: {block_structure}, Num Blocks: {num_blocks}")
 
+    # -- Dynamic page width & cell L/R padding ---------------------------
+    # <= 14 cols : default page, default padding (3 pt each side)
+    # 15-16 cols : widen page by 22 mm per extra col above 14; L/R padding -> 2 pt
+    # 17 cols    : widen page (max); L/R padding -> 1 pt
+    # > 17 cols  : page stays at default; L/R padding stays 1 pt
+    _DEF_W, _DEF_H = CUSTOM_PAGE_SIZE
+    if num_cols <= 14:
+        dynamic_page_size = (_DEF_W, _DEF_H)
+        lr_padding = 3
+    elif num_cols <= 16:
+        dynamic_page_size = (_DEF_W + (num_cols - 14) * 22 * mm, _DEF_H)
+        lr_padding = 2
+    elif num_cols <= 17:
+        dynamic_page_size = (_DEF_W + (num_cols - 14) * 22 * mm, _DEF_H)
+        lr_padding = 1
+    else:
+        dynamic_page_size = (_DEF_W, _DEF_H)
+        lr_padding = 1
+    print(f"📄 Page: {dynamic_page_size[0]/mm:.0f}x{dynamic_page_size[1]/mm:.0f}mm  L/R padding: {lr_padding}pt")
+    # --------------------------------------------------------------------
+
     doc = SimpleDocTemplate(
         filename,
-        pagesize=CUSTOM_PAGE_SIZE,
+        pagesize=dynamic_page_size,
         topMargin=3.5 * cm,
         bottomMargin=2.0 * cm,
         leftMargin=1.5 * cm,
@@ -444,7 +465,7 @@ def create_seating_pdf(filename="algo/pdf_gen/seat_plan_generated/seating_plan.p
     room_text = f"Room no. {room_no}"
     room = Paragraph(f"<b>{room_text}</b>", br_style)
     
-    page_width = CUSTOM_PAGE_SIZE[0]
+    page_width = dynamic_page_size[0]
     content_width = page_width - doc.leftMargin - doc.rightMargin
 
     room_width = stringWidth(room_text, "Helvetica-Bold", 12) + 10
@@ -509,8 +530,8 @@ def create_seating_pdf(filename="algo/pdf_gen/seat_plan_generated/seating_plan.p
             ('FONTSIZE', (0, 0), (-1, -1), 9),
             ('TOPPADDING', (0, 0), (-1, -1), cell_padding),
             ('BOTTOMPADDING', (0, 0), (-1, -1), cell_padding),
-            ('LEFTPADDING', (0, 0), (-1, -1), 3),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 3),
+            ('LEFTPADDING', (0, 0), (-1, -1), lr_padding),
+            ('RIGHTPADDING', (0, 0), (-1, -1), lr_padding),
         ])
 
         # ✅ Add THICK BORDERS between blocks (visual separation) using block_ranges
