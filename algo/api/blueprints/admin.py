@@ -2,7 +2,7 @@
 # Handles user login/signup and provides utilities for bulk database table operations.
 from flask import Blueprint, jsonify, request, send_file, current_app
 from algo.database.db import get_db_connection
-from algo.services.auth_service import token_required, login as auth_login, signup as auth_signup, google_auth_handler, get_user_by_token, get_user_by_id, update_user_profile
+from algo.services.auth_service import token_required, login as auth_login, signup as auth_signup, google_auth_handler, get_user_by_token, get_user_by_id, update_user_profile, VALID_ROLES, role_required
 import sqlite3
 
 # Helper for optional rate limiting
@@ -40,7 +40,7 @@ def signup():
     username = data.get('username')
     email = data.get('email')
     password = data.get('password')
-    role = data.get('role', 'STUDENT')
+    role = data.get('role', 'faculty').lower()
     
     success, user_data, token = auth_signup(username, email, password, role)
     if success:
@@ -117,11 +117,34 @@ def update_profile():
 def google_auth():
     data = request.get_json()
     token = data.get('token')
+    role = data.get('role')  # Optional: provided when user selects role for new account
     
-    success, user_data, auth_token = google_auth_handler(token)
+    success, user_data, auth_token = google_auth_handler(token, role=role)
     if success:
+        # Check if this is a needs_role response (new user without role selection)
+        if isinstance(user_data, dict) and user_data.get('needs_role'):
+            return jsonify({
+                "status": "needs_role",
+                "needs_role": True,
+                "email": user_data.get('email'),
+                "full_name": user_data.get('full_name'),
+                "available_roles": VALID_ROLES
+            })
         return jsonify({"status": "success", "token": auth_token, "user": user_data})
     return jsonify({"status": "error", "message": user_data}), 401
+
+@auth_bp.route('/roles', methods=['GET'])
+def get_roles():
+    """Return available roles for signup"""
+    return jsonify({
+        "status": "success",
+        "roles": VALID_ROLES,
+        "descriptions": {
+            "developer": "Full system access including database management",
+            "admin": "Administrative access for managing seat plans and users",
+            "faculty": "Faculty access for viewing plans and providing feedback"
+        }
+    })
 
 @auth_bp.route('/logout', methods=['POST'])
 def logout():

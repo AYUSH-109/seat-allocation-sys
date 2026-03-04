@@ -5,7 +5,7 @@ Tests the auth_service module functions directly and through the API:
 - Signup (local), login, profile fetch, profile update
 - JWT token generation, verification, and expiry
 - Password hashing with bcrypt
-- Role-based access (ADMIN, STUDENT, TEACHER, FACULTY)
+- Role-based access (developer, admin, faculty)
 - Edge cases (duplicate email, missing fields, wrong password)
 - Google OAuth handler logic (mocked)
 - token_required / admin_required decorators
@@ -36,8 +36,8 @@ class TestSignup:
         assert data.get("token") is not None
         assert data.get("user", {}).get("email") == "new@test.com"
 
-    def test_signup_default_role_is_student(self, client):
-        """Without a role param, the default role should be STUDENT."""
+    def test_signup_default_role_is_faculty(self, client):
+        """Without a role param, the default role should be faculty."""
         resp = client.post("/api/auth/signup", json={
             "username": "defrole",
             "email": "defrole@test.com",
@@ -45,19 +45,19 @@ class TestSignup:
         })
         data = resp.get_json()
         user = data.get("user", {})
-        assert user.get("role") == "STUDENT"
+        assert user.get("role") == "faculty"
 
     def test_signup_with_admin_role(self, client):
-        """Signup with explicit ADMIN role."""
+        """Signup with explicit admin role."""
         resp = client.post("/api/auth/signup", json={
             "username": "adminuser",
             "email": "admin@test.com",
             "password": "Admin123!",
-            "role": "ADMIN",
+            "role": "admin",
         })
         data = resp.get_json()
         assert resp.status_code == 200
-        assert data.get("user", {}).get("role") == "ADMIN"
+        assert data.get("user", {}).get("role") == "admin"
 
     def test_signup_duplicate_email_rejected(self, client):
         """Registering with an existing email should fail."""
@@ -125,14 +125,14 @@ class TestLogin:
 
     def test_login_returns_correct_role(self, client):
         """Login response includes the correct role."""
-        _signup_user(client, "rolecheck", "role@test.com", "Pass123!", "TEACHER")
+        _signup_user(client, "rolecheck", "role@test.com", "Pass123!", "faculty")
         resp = client.post("/api/auth/login", json={
             "email": "role@test.com",
             "password": "Pass123!",
         })
         data = resp.get_json()
         user = data.get("user", {})
-        assert user.get("role") == "TEACHER"
+        assert user.get("role") == "faculty"
 
 
 # ============================================================================
@@ -155,9 +155,9 @@ class TestJWTToken:
         """Token payload should contain the user's role."""
         from algo.services.auth_service import verify_token
 
-        user, token = _signup_user(client, "roletoken", "rtok@test.com", "Pass123!", "ADMIN")
+        user, token = _signup_user(client, "roletoken", "rtok@test.com", "Pass123!", "admin")
         payload = verify_token(token)
-        assert payload.get("role") == "ADMIN"
+        assert payload.get("role") == "admin"
 
     def test_expired_token_rejected(self, client):
         """An expired token should be rejected."""
@@ -169,7 +169,7 @@ class TestJWTToken:
             "iat": datetime.now(timezone.utc) - timedelta(hours=2),
             "sub": "999",
             "user_id": 999,
-            "role": "STUDENT",
+            "role": "faculty",
         }
         expired_token = pyjwt.encode(expired_payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
@@ -227,21 +227,21 @@ class TestAdminRequired:
     """The admin_required decorator should gate admin-only endpoints."""
 
     def test_admin_can_access_admin_endpoint(self, client, user_a):
-        """ADMIN user can access admin-only endpoints."""
-        # user_a is ADMIN
+        """admin user can access admin-only endpoints."""
+        # user_a is admin
         resp = client.get("/api/database/overview",
                           headers=_auth_header(user_a["token"]))
         # Should be 200 or some non-403 status
         assert resp.status_code != 403
 
-    def test_student_cannot_access_admin_endpoint(self, client, user_b):
-        """STUDENT user should be denied admin-only endpoints."""
+    def test_faculty_cannot_access_admin_endpoint(self, client, user_b):
+        """faculty user should be denied admin-only endpoints."""
         # The admin data management endpoints in database_bp require admin
         resp = client.get("/api/admin/sessions",
                           headers=_auth_header(user_b["token"]))
         # Should be 403 Forbidden
         assert resp.status_code in (403, 401, 404), \
-            f"STUDENT should be denied admin access, got {resp.status_code}"
+            f"faculty should be denied admin access, got {resp.status_code}"
 
 
 # ============================================================================

@@ -36,6 +36,12 @@ GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 if os.getenv('FLASK_ENV') == 'production' and JWT_SECRET_KEY == "dev-stable-secret-key-change-in-prod":
     print("⚠️  CRITICAL: Using default JWT_SECRET_KEY in production! Set JWT_SECRET_KEY env variable.")
 
+# ============================================================================
+# ROLE DEFINITIONS
+# ============================================================================
+VALID_ROLES = ['developer', 'admin', 'faculty']
+DEFAULT_ROLE = 'faculty'
+
 def _get_conn():
     """Get a standalone connection to the consolidated database."""
     conn = sqlite3.connect(str(Config.DB_PATH), timeout=20)
@@ -43,11 +49,10 @@ def _get_conn():
     return conn
 
 # ============================================================================
-# ADMIN EMAIL LIST (Add admin emails here)
+# ADMIN EMAIL LIST (Optional: auto-assign developer role to these emails)
 # ============================================================================
-# When a user signs in with Google using these emails, they get ADMIN role
 ADMIN_EMAILS = [
-    # Add admin emails here
+    # Add admin emails here — they will be auto-assigned 'developer' role on Google signup
 ]
 
 def token_required(f):
@@ -82,18 +87,38 @@ def token_required(f):
     return decorated
 
 def admin_required(f):
-    """Decorator to require ADMIN role. Must be used AFTER @token_required."""
+    """Decorator to require admin-level role. Must be used AFTER @token_required."""
     from functools import wraps
     from flask import request, jsonify
     
     @wraps(f)
     def decorated(*args, **kwargs):
         user_role = getattr(request, 'user_role', None)
-        if user_role != 'ADMIN':
+        if user_role not in ('developer', 'admin', 'ADMIN'):
             return jsonify({'status': 'error', 'message': 'Admin access required'}), 403
         return f(*args, **kwargs)
     
     return decorated
+
+def role_required(*allowed_roles):
+    """Decorator to restrict access to specific roles. Must be used AFTER @token_required.
+    Usage: @token_required\n           @role_required('developer', 'admin')"""
+    from functools import wraps
+    from flask import request, jsonify
+    
+    def decorator(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            user_role = getattr(request, 'user_role', DEFAULT_ROLE)
+            if user_role not in allowed_roles:
+                return jsonify({
+                    'status': 'error',
+                    'message': f'Access denied. Required role: {", ".join(allowed_roles)}',
+                    'required_roles': list(allowed_roles)
+                }), 403
+            return f(*args, **kwargs)
+        return decorated
+    return decorator
 
 # No separate init needed — schema.py handles the unified users table via ensure_demo_db()
 
@@ -212,15 +237,21 @@ def get_user_by_token(token: str) -> Optional[Dict]:
 # AUTH FUNCTIONS
 # ============================================================================
 
-def signup(username: str, email: str, password: str, role: str = "STUDENT") -> Tuple[bool, Dict, str]:
+def signup(username: str, email: str, password: str, role: str = "faculty") -> Tuple[bool, Dict, str]:
     """
-    Sign up a new user with email/password
+    Sign up a new user with email/password.
+    Role must be one of: developer, admin, faculty.
     
     Returns:
         (success: bool, user_data: dict or error_msg: str, token: str or empty_string)
     """
     if not username or not email or not password:
         return False, "All fields are required.", ""
+    
+    # Validate role
+    selected_role = role.lower() if role else DEFAULT_ROLE
+    if selected_role not in VALID_ROLES:
+        return False, f"Invalid role. Must be one of: {', '.join(VALID_ROLES)}", ""
     
     if get_user_by_email(email):
         return False, "User with this email already exists.", ""
@@ -233,30 +264,40 @@ def signup(username: str, email: str, password: str, role: str = "STUDENT") -> T
             """INSERT INTO users 
                (username, email, password_hash, role, auth_provider) 
                VALUES (?, ?, ?, ?, ?)""",
-            (username, email, password_hash, role.upper(), 'local')
+            (username, email, password_hash, selected_role, 'local')
         )
         conn.commit()
         user_id = cursor.lastrowid
         conn.close()
         
         # Create auth token immediately
-        token = create_auth_token(user_id, role.upper())
+        token = create_auth_token(user_id, selected_role)
         
         user_data = {
             "id": user_id,
             "username": username,
             "email": email,
-            "role": role.upper(),
+            "role": selected_role,
             "fullName": "",
         }
         
-        print(f"✅ User registered: {email}")
-        return True, user_data, token  # ✅ Consistent format
+        print(f"✅ User registered: {email} (role: {selected_role})")
+        return True, user_data, token
         
     except sqlite3.Error as e:
         error_msg = f"Database error: {str(e)}"
         print(f"❌ Signup error: {error_msg}")
-        return False, error_msg, ""  # ✅ Return error message in 2nd position
+        return False, error_msg, ""
+
+def _normalize_role(role_str):
+    """Normalize legacy role strings to new system."""
+    role_map = {
+        'ADMIN': 'admin', 'FACULTY': 'faculty', 'STUDENT': 'faculty',
+        'user': 'faculty', 'User': 'faculty',
+    }
+    if role_str in VALID_ROLES:
+        return role_str
+    return role_map.get(role_str, DEFAULT_ROLE)
 
 def login(email: str, password: str) -> Tuple[bool, Optional[Dict], str]:
     """Login user with email/password"""
@@ -269,12 +310,13 @@ def login(email: str, password: str) -> Tuple[bool, Optional[Dict], str]:
         return False, "User registered via Google. Use Google sign-in.", ""
     
     if bcrypt.checkpw(password.encode('utf-8'), user['password_hash'].encode('utf-8')):
-        token = create_auth_token(user['id'], user['role'])
+        role = _normalize_role(user['role'])
+        token = create_auth_token(user['id'], role)
         user_data = {
             "id": user['id'],
             "username": user['username'],
             "email": user['email'],
-            "role": user['role'],
+            "role": role,
             "fullName": user.get("full_name"),
         }
         return True, user_data, token
@@ -314,10 +356,11 @@ def update_user_profile(user_id: int, username: str = None, email: str = None) -
 # GOOGLE OAUTH (WITH ADMIN ROLE SUPPORT)
 # ============================================================================
 
-def google_auth_handler(token: str) -> Tuple[bool, Optional[Dict], str]:
+def google_auth_handler(token: str, role: str = None) -> Tuple[bool, Optional[Dict], str]:
     """
     Handle Google OAuth token verification and user creation/update.
-    Users with emails in ADMIN_EMAILS list get ADMIN role.
+    - Existing users: log in with their stored role (role param ignored).
+    - New users: require role selection. If role not provided, returns needs_role=True.
     """
     
     if not GOOGLE_AUTH_AVAILABLE:
@@ -338,27 +381,18 @@ def google_auth_handler(token: str) -> Tuple[bool, Optional[Dict], str]:
         if not google_id or not email:
             return False, "Invalid Google token", ""
         
-        # ========== DETERMINE ROLE ==========
-        # Check if email is in admin list OR default to ADMIN for Google sign-in
-        if email.lower() in [admin_email.lower() for admin_email in ADMIN_EMAILS]:
-            user_role = 'ADMIN'
-            print(f"👑 Admin user detected (in ADMIN_EMAILS): {email}")
-        else:
-            user_role = 'ADMIN'  # Default to ADMIN for Google OAuth users
-            print(f"👑 Google sign-in user defaulting to ADMIN: {email}")
-        
         # Check if user exists by email
         existing_user = get_user_by_email(email)
         
         if existing_user:
-            # User already exists
+            # ========== EXISTING USER — LOGIN ==========
             user = existing_user
             user_id = user['id']
+            user_role = _normalize_role(user.get('role', DEFAULT_ROLE))
             
-            # Update google_id if not set, and update role if needed
+            # Update google_id if not set
             try:
                 conn = _get_conn()
-                
                 updates = []
                 params = []
                 
@@ -366,14 +400,14 @@ def google_auth_handler(token: str) -> Tuple[bool, Optional[Dict], str]:
                     updates.append("google_id = ?")
                     params.append(google_id)
                 
-                # Update role if user was STUDENT and is now in ADMIN list
-                if existing_user.get('role') == 'STUDENT' and user_role == 'ADMIN':
+                # Normalize role in DB if it was a legacy value
+                if user.get('role') != user_role:
                     updates.append("role = ?")
-                    params.append('ADMIN')
-                    print(f"📝 Updated {email} to ADMIN role")
+                    params.append(user_role)
                 
                 if updates:
                     updates.append("auth_provider = 'google'")
+                    updates.append("updated_at = CURRENT_TIMESTAMP")
                     query = f"UPDATE users SET {', '.join(updates)} WHERE id = ?"
                     params.append(user_id)
                     conn.execute(query, tuple(params))
@@ -383,11 +417,39 @@ def google_auth_handler(token: str) -> Tuple[bool, Optional[Dict], str]:
             except Exception as e:
                 print(f"Warning: Could not update user: {e}")
             
-            # Use actual role from database
-            user_role = existing_user.get('role', user_role)
+            auth_token = create_auth_token(user_id, user_role)
+            
+            user_data = {
+                "id": user.get('id', user_id),
+                "username": user.get('username', email.split('@')[0]),
+                "email": user.get('email', email),
+                "role": user_role,
+                "fullName": user.get('full_name', full_name),
+                "is_new_user": False,
+            }
+            
+            print(f"✅ Google login: {email} (role: {user_role})")
+            return True, user_data, auth_token
+        
         else:
-            # Create new user from Google data
-            username = email.split('@')[0]  # Use email prefix as username
+            # ========== NEW USER — NEEDS ROLE SELECTION ==========
+            
+            # Auto-assign developer role for ADMIN_EMAILS
+            if email.lower() in [ae.lower() for ae in ADMIN_EMAILS]:
+                role = 'developer'
+                print(f"👑 Auto-assigning developer role (ADMIN_EMAILS): {email}")
+            
+            # If no role provided, tell frontend to ask
+            if not role or role not in VALID_ROLES:
+                return True, {
+                    "needs_role": True,
+                    "email": email,
+                    "full_name": full_name,
+                    "google_id": google_id,
+                }, ""
+            
+            # Create new user with selected role
+            username = email.split('@')[0]
             
             try:
                 conn = _get_conn()
@@ -395,37 +457,28 @@ def google_auth_handler(token: str) -> Tuple[bool, Optional[Dict], str]:
                     """INSERT INTO users 
                        (username, email, full_name, auth_provider, google_id, role) 
                        VALUES (?, ?, ?, ?, ?, ?)""",
-                    (username, email, full_name, 'google', google_id, user_role)
+                    (username, email, full_name, 'google', google_id, role)
                 )
                 conn.commit()
                 user_id = cursor.lastrowid
                 conn.close()
                 
-                role_text = "ADMIN 👑" if user_role == 'ADMIN' else "STUDENT"
-                print(f"✅ New user created: {email} ({role_text})")
+                print(f"✅ New Google user created: {email} (role: {role})")
             except sqlite3.Error as e:
                 return False, f"Database error: {str(e)}", ""
             
-            user = {
+            auth_token = create_auth_token(user_id, role)
+            
+            user_data = {
                 "id": user_id,
                 "username": username,
                 "email": email,
-                "role": user_role,
-                "full_name": full_name,
+                "role": role,
+                "fullName": full_name,
+                "is_new_user": True,
             }
-        
-        # Create JWT token
-        auth_token = create_auth_token(user_id, user_role)
-        
-        user_data = {
-            "id": user.get('id', user_id),
-            "username": user.get('username', email.split('@')[0]),
-            "email": user.get('email', email),
-            "role": user_role,
-            "fullName": user.get('full_name', full_name),
-        }
-        
-        return True, user_data, auth_token
+            
+            return True, user_data, auth_token
         
     except Exception as e:
         print(f"Google auth error: {e}")

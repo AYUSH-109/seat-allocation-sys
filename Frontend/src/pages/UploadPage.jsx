@@ -367,7 +367,7 @@ const UploadPage = ({ showToast }) => {
                 {hasActiveSession ? 'Adding to Session' : 'Data Import'}
               </span>
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 via-gray-700 to-gray-500 dark:from-gray-100 dark:via-gray-300 dark:to-gray-500 bg-clip-text text-transparent">
+            <h1 className="text-4xl md:text-5xl font-bold pb-1 bg-gradient-to-r from-gray-900 via-gray-700 to-gray-500 dark:from-gray-100 dark:via-gray-300 dark:to-gray-500 bg-clip-text text-transparent">
               Upload Student Data
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-2">

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
-const GoogleLoginComponent = ({ showToast }) => {
+const GoogleLoginComponent = ({ showToast, onNeedsRole }) => {
   const navigate = useNavigate();
   const { googleLogin } = useAuth();
   const [loading, setLoading] = React.useState(false);
@@ -80,6 +80,30 @@ const GoogleLoginComponent = ({ showToast }) => {
       setLoading(false);
 
       if (result.success) {
+        // Check if new user needs role selection
+        if (result.needs_role) {
+          console.log('🔄 Redirecting to role selection...');
+          if (onNeedsRole) {
+            onNeedsRole({
+              google_token: response.credential,
+              email: result.email,
+              full_name: result.full_name,
+            });
+          } else {
+            // Fallback: navigate to signup with Google data
+            navigate('/signup', {
+              state: {
+                googleData: {
+                  google_token: response.credential,
+                  email: result.email,
+                  full_name: result.full_name,
+                }
+              }
+            });
+          }
+          return;
+        }
+
         console.log('✅ Google login successful');
         showToast('Welcome! Logged in with Google', 'success');
         // Navigate to dashboard after a short delay

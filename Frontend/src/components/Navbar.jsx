@@ -43,8 +43,8 @@ const Navbar = () => {
       { name: 'About us', page: '/aboutus', icon: Info }
     ];
     
-    // Add admin-only feedback link for administrators
-    if (user.role === 'ADMIN') {
+    // Add admin-only feedback link for administrators and developers
+    if (user.role && ['developer', 'admin', 'ADMIN'].includes(user.role)) {
       items.push({ name: 'Admin Feedback', page: '/admin-feedback', icon: Shield });
     }
     

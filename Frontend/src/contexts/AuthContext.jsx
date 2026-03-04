@@ -81,14 +81,17 @@ export const AuthProvider = ({ children }) => {
   // ============================================================================
   // Google OAuth Login
   // ============================================================================
-  const googleLogin = async (googleToken) => {
+  const googleLogin = async (googleToken, role = null) => {
     try {
+      const body = { token: googleToken };
+      if (role) body.role = role;
+
       const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ token: googleToken }),
+        body: JSON.stringify(body),
       });
 
       // Check if response is JSON (not HTML error page)
@@ -102,6 +105,18 @@ export const AuthProvider = ({ children }) => {
 
       if (!response.ok) {
         return { success: false, error: data.message || data.error || 'Google login failed' };
+      }
+
+      // Handle needs_role response (new Google user without role)
+      if (data.status === 'needs_role' || data.needs_role) {
+        console.log('🔄 New Google user — role selection required');
+        return {
+          success: true,
+          needs_role: true,
+          email: data.email,
+          full_name: data.full_name,
+          available_roles: data.available_roles,
+        };
       }
 
       // Store token and user data in sessionStorage (per-tab isolation)

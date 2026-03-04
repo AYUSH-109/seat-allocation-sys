@@ -71,7 +71,7 @@ def app_ctx(app):
 # 3. AUTH HELPERS
 # ---------------------------------------------------------------------------
 
-def _signup_user(client, username, email, password, role="STUDENT"):
+def _signup_user(client, username, email, password, role="faculty"):
     """Register a user via the API and return (user_data, token)."""
     resp = client.post("/api/auth/signup", json={
         "username": username,
@@ -100,22 +100,22 @@ def _auth_header(token):
 
 @pytest.fixture()
 def user_a(client):
-    """Pre-registered User A (ADMIN) with JWT token."""
-    user, token = _signup_user(client, "alice", "alice@test.com", "Password1!", "ADMIN")
+    """Pre-registered User A (admin) with JWT token."""
+    user, token = _signup_user(client, "alice", "alice@test.com", "Password1!", "admin")
     return {"user": user, "token": token, "email": "alice@test.com", "password": "Password1!"}
 
 
 @pytest.fixture()
 def user_b(client):
-    """Pre-registered User B (STUDENT) with JWT token."""
-    user, token = _signup_user(client, "bob", "bob@test.com", "Password2!", "STUDENT")
+    """Pre-registered User B (faculty) with JWT token."""
+    user, token = _signup_user(client, "bob", "bob@test.com", "Password2!", "faculty")
     return {"user": user, "token": token, "email": "bob@test.com", "password": "Password2!"}
 
 
 @pytest.fixture()
 def user_c(client):
-    """Pre-registered User C (TEACHER) with JWT token."""
-    user, token = _signup_user(client, "carol", "carol@test.com", "Password3!", "TEACHER")
+    """Pre-registered User C (faculty) with JWT token."""
+    user, token = _signup_user(client, "carol", "carol@test.com", "Password3!", "faculty")
     return {"user": user, "token": token, "email": "carol@test.com", "password": "Password3!"}
 
 

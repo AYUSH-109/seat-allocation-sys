@@ -63,6 +63,10 @@ const LoginPage = ({ showToast }) => {
           {/* ========== GOOGLE LOGIN COMPONENT ========== */}
           <GoogleLoginComponent
             showToast={showToast}
+            onNeedsRole={(googleData) => {
+              showToast('Please select your role to complete registration', 'info');
+              navigate('/signup', { state: { googleData } });
+            }}
           />
           {/* ========== END GOOGLE LOGIN ========== */}
 

@@ -64,11 +64,11 @@ class TestUnifiedSchema:
         assert not missing, f"Users table missing auth columns: {missing}"
 
     def test_users_table_role_check_constraint(self, app_ctx, tmp_db):
-        """Users table should accept STUDENT, ADMIN, TEACHER, FACULTY roles."""
+        """Users table should accept developer, admin, faculty roles (and legacy uppercase)."""
         conn = sqlite3.connect(str(tmp_db))
         cur = conn.cursor()
 
-        valid_roles = ["STUDENT", "ADMIN", "TEACHER", "FACULTY"]
+        valid_roles = ["developer", "admin", "faculty", "STUDENT", "ADMIN", "FACULTY"]
         for i, role in enumerate(valid_roles):
             try:
                 cur.execute(
@@ -158,7 +158,7 @@ class TestCrossDomainQueries:
 
         assert row is not None, "User should exist in consolidated DB"
         assert row["auth_provider"] == "local"
-        assert row["role"] == "STUDENT"
+        assert row["role"] == "faculty"
 
     def test_user_session_join_works(self, client, user_a, tmp_db):
         """Can join users and allocation_sessions in a single query."""

@@ -37,7 +37,7 @@ const SplitText = ({
     : Array.from(text);
 
   return (
-    <div className={className} aria-hidden={false}>
+    <div className={className} aria-hidden={false} style={{ paddingBottom: '0.15em' }}>
       {letters.map((char, i) => {
         if (char === '\n') return <br key={`br-${i}`} />;
         if (char.trim() === '' && splitType === 'chars') return (
@@ -47,6 +47,7 @@ const SplitText = ({
         const delayMs = i * delay;
         const initialStyle = {
           display: 'inline-block',
+          lineHeight: 1.2,
           opacity: from.opacity ?? 0,
           transform: `translateY(${from.y ?? 0}px)`,
           willChange: 'transform, opacity'

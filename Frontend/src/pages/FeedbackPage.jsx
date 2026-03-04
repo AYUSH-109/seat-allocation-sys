@@ -185,7 +185,7 @@ const FeedbackPage = ({ showToast }) => {
                         </div>
                         <SplitText
                             text={`Report Bugs & Suggest Features`}
-                            className="inline-block text-4xl md:text-5xl font-bold leading-loose pb-2 bg-gradient-to-r from-gray-900 via-gray-700 to-gray-500 dark:from-gray-100 dark:via-gray-300 dark:to-gray-500 bg-clip-text text-transparent"
+                            className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 via-gray-700 to-gray-500 dark:from-gray-100 dark:via-gray-300 dark:to-gray-500 bg-clip-text text-transparent"
                             splitType="chars"
                             delay={30}
                         />

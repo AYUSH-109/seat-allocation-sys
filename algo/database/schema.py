@@ -62,7 +62,7 @@ def ensure_demo_db():
                 username TEXT NOT NULL,
                 email TEXT UNIQUE NOT NULL,
                 password_hash TEXT,
-                role TEXT NOT NULL DEFAULT 'STUDENT' CHECK(role IN ('STUDENT', 'ADMIN', 'TEACHER', 'FACULTY')),
+                role TEXT NOT NULL DEFAULT 'faculty' CHECK(role IN ('developer', 'admin', 'faculty', 'STUDENT', 'ADMIN', 'TEACHER', 'FACULTY')),
                 full_name TEXT,
                 auth_provider TEXT DEFAULT 'local',
                 google_id TEXT,
