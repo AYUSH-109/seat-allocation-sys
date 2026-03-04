@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Exam Seat Locator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="bg-grid"></div>
+
+  <header>
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">◈</span>
+        <span class="logo-text">SeatFinder</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 1.5rem;">
+        <label class="theme-switch" title="Toggle Theme">
+          <input type="checkbox" id="themeToggle" aria-label="Toggle dark mode">
+          <div class="slider"></div>
+        </label>
+        <div class="header-badge">Exam Portal</div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-container">
+    <div class="hero">
+      <div class="hero-tag">// EXAM SEAT LOCATOR SYSTEM</div>
+      <h1 class="hero-title">Find Your<br><span class="accent">Exam Seat</span></h1>
+      <p class="hero-sub">Enter your enrollment number and exam details to instantly locate your assigned seat.</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">
+          <span class="alert-icon">{% if category == 'error' %}✕{% else %}✓{% endif %}</span>
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endwith %}
+
+    <div class="form-card">
+      <div class="form-card-header">
+        <span class="form-card-step">01</span>
+        <span class="form-card-title">Enter Your Details</span>
+      </div>
+
+      <form action="/search" method="POST" class="search-form" novalidate>
+        <div class="field-group">
+          <label for="enrollment" class="field-label">Enrollment Number</label>
+          <div class="field-wrapper">
+            <input
+              type="text"
+              id="enrollment"
+              name="enrollment"
+              class="field-input"
+              placeholder="e.g. BTCS24O1001"
+              autocomplete="off"
+              required
+            />
+            <span class="field-icon">🎓</span>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label for="exam_date" class="field-label">Exam Date</label>
+          <div class="field-wrapper">
+            <input
+              type="date"
+              id="exam_date"
+              name="exam_date"
+              class="field-input"
+              required
+            />
+            <span class="field-icon">📅</span>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field-group">
+            <label for="start_time" class="field-label">Start Time</label>
+            <div class="field-wrapper">
+              <select id="start_time" name="start_time" class="field-input field-select" required>
+                <option value="" disabled selected>Select start time</option>
+                {% for t in times %}
+                  <option value="{{ t }}">{{ t }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label for="end_time" class="field-label">End Time</label>
+            <div class="field-wrapper">
+              <select id="end_time" name="end_time" class="field-select field-input" required>
+                <option value="" disabled selected>Select end time</option>
+                {% for t in times %}
+                  <option value="{{ t }}">{{ t }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="submit-btn">
+          <span>Locate My Seat</span>
+          <span class="btn-arrow">→</span>
+        </button>
+      </form>
+      <div style="margin-top: 20px; text-align: center;">
+        <a href="/test-result" class="demo-btn" style="display: inline-block; padding: 10px 20px; background: #f0f0f0; border-radius: 6px; text-decoration: none; color: #666; font-size: 14px; border: 1px solid #ddd; transition: all 0.3s ease;">
+          👁️ View Sample Result
+        </a>
+      </div>
+    </div>
+
+    <div class="info-strip">
+      <div class="info-item">
+        <span class="info-num">{{ dates | length }}</span>
+        <span class="info-label">Exam Dates</span>
+      </div>
+      <div class="info-divider"></div>
+      <div class="info-item">
+        <span class="info-num">{{ times | length }}</span>
+        <span class="info-label">Time Slots</span>
+      </div>
+      <div class="info-divider"></div>
+      <div class="info-item">
+        <span class="info-num">Live</span>
+        <span class="info-label">Auto-synced Data</span>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <form action="/reload" method="POST" style="display:inline;">
+      <button type="submit" class="reload-btn">⟳ Reload Sessions</button>
+    </form>
+    <span class="footer-text">Exam Seat Locator System &copy; 2026</span>
+  </footer>
+
+  <script>
+    // Theme Toggle
+    const themeToggle = document.getElementById('themeToggle');
+    const html = document.documentElement;
+
+    // Load saved theme preference or default to dark
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    html.setAttribute('data-theme', savedTheme);
+    themeToggle.checked = savedTheme === 'light';
+
+    // Theme toggle handler
+    themeToggle.addEventListener('change', () => {
+      const newTheme = themeToggle.checked ? 'light' : 'dark';
+      html.setAttribute('data-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+    });
+
+    // Animate form fields on focus
+    document.querySelectorAll('.field-input').forEach(el => {
+      el.addEventListener('focus', () => el.closest('.field-group').classList.add('focused'));
+      el.addEventListener('blur', () => el.closest('.field-group').classList.remove('focused'));
+    });
+  </script>
+</body>
+</html>

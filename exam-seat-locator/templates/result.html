@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Seat Result — Exam Seat Locator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="bg-grid"></div>
+
+  <header>
+    <div class="header-inner">
+      <a href="/" class="logo">
+        <span class="logo-icon">◈</span>
+        <span class="logo-text">SeatFinder</span>
+      </a>
+      <div style="display: flex; align-items: center; gap: 1.5rem;">
+        <label class="theme-switch" title="Toggle Theme">
+          <input type="checkbox" id="themeToggle" aria-label="Toggle dark mode">
+          <div class="slider"></div>
+        </label>
+        <div class="header-badge">Exam Portal</div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-container result-main">
+
+    <!-- Success Banner -->
+    <div class="result-banner">
+      <div class="result-banner-icon">✓</div>
+      <div>
+        <div class="result-banner-title">Seat Found!</div>
+        <div class="result-banner-sub">{{ enrollment }}</div>
+      </div>
+    </div>
+
+    <!-- Seat Details Card -->
+    <div class="details-grid">
+      <div class="detail-card">
+        <div class="detail-label">Classroom</div>
+        <div class="detail-value accent">{{ seat.classroom_number }}</div>
+      </div>
+      <div class="detail-card">
+        <div class="detail-label">Date</div>
+        <div class="detail-value">{{ seat.exam_date }}</div>
+      </div>
+      <div class="detail-card">
+        <div class="detail-label">Timings</div>
+        <div class="detail-value">{{ seat.start_time }} – {{ seat.end_time }}</div>
+      </div>
+      <div class="detail-card highlight-card">
+        <div class="detail-label">Your Seat</div>
+        <div class="detail-value">
+          Row <strong>{{ seat.row + 1 }}</strong>, Col <strong>{{ seat.col + 1 }}</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- Classroom Layout -->
+    <div class="layout-section">
+      <div class="layout-header">
+        <h2 class="layout-title">Classroom Layout — {{ seat.classroom_number }}</h2>
+        <span class="layout-meta">{{ seat.rows }} × {{ seat.columns }} grid</span>
+      </div>
+
+      <!-- Blackboard -->
+      <div class="blackboard">
+        <span>◼ BLACKBOARD / FRONT</span>
+      </div>
+
+      <!-- Seat Grid -->
+      <div class="seat-grid"
+           style="--cols: {{ seat.columns }}; --rows: {{ seat.rows }};">
+        {% for r in range(seat.rows) %}
+          {% for c in range(seat.columns) %}
+            {% set cell = seat.seats[r][c] %}
+            {% if r == seat.row and c == seat.col %}
+              {# Student's own seat #}
+              <div class="seat seat-mine" title="{{ cell.roll_number }} - Set {{ cell.paper_set }} (Your Seat)">
+                <span class="seat-label">{{ cell.roll_number }}</span>
+                <span class="seat-set">{{ cell.paper_set }}</span>
+                <span class="seat-badge">YOU</span>
+              </div>
+            {% elif cell %}
+              {# Other occupied seats or special states #}
+              {% if cell.status == "broken" %}
+                <div class="seat seat-broken" title="Broken/Unavailable">
+                  <span class="seat-label">✕</span>
+                </div>
+              {% elif cell.is_unallocated %}
+                <div class="seat seat-unallocated" title="Unallocated Seat">
+                  <span class="seat-label">-</span>
+                </div>
+              {% else %}
+                {# Normal occupied seat #}
+                <div class="seat seat-occupied" title="{{ cell.roll_number }} - Set {{ cell.paper_set }}">
+                  <span class="seat-label">{{ cell.roll_number }}</span>
+                  <span class="seat-set">{{ cell.paper_set }}</span>
+                </div>
+              {% endif %}
+            {% else %}
+              {# Empty seat #}
+              <div class="seat seat-empty" title="Empty">
+                <span class="seat-label">-</span>
+              </div>
+            {% endif %}
+          {% endfor %}
+        {% endfor %}
+      </div>
+
+      <!-- Row/Column indicators -->
+      <div class="axis-row">
+        {% for c in range(seat.columns) %}
+          <div class="axis-label">C{{ c + 1 }}</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-dot dot-mine"></div>
+        <span>Your Seat</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot dot-occupied"></div>
+        <span>Occupied</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot dot-empty"></div>
+        <span>Empty</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot dot-unallocated"></div>
+        <span>Unallocated</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot dot-broken"></div>
+        <span>Broken/Unavailable</span>
+      </div>
+    </div>
+
+    <a href="/" class="back-btn">← Search Again</a>
+  </main>
+
+  <footer>
+    <span class="footer-text">Exam Seat Locator System &copy; 2026</span>
+  </footer>
+
+  <script>
+    // Theme Toggle
+    const themeToggle = document.getElementById('themeToggle');
+    const html = document.documentElement;
+
+    // Load saved theme preference or default to dark
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    html.setAttribute('data-theme', savedTheme);
+    themeToggle.checked = savedTheme === 'light';
+
+    // Theme toggle handler
+    themeToggle.addEventListener('change', () => {
+      const newTheme = themeToggle.checked ? 'light' : 'dark';
+      html.setAttribute('data-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+    });
+
+    // Animate the student's seat
+    const mySeat = document.querySelector('.seat-mine');
+    if (mySeat) {
+      mySeat.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    // Staggered reveal animation for seats
+    document.querySelectorAll('.seat').forEach((seat, i) => {
+      seat.style.animationDelay = `${i * 18}ms`;
+      seat.classList.add('seat-reveal');
+    });
+  </script>
+</body>
+</html>

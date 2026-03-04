@@ -24,7 +24,7 @@ except ImportError:
 PDF_GEN_DIR = os.path.dirname(os.path.abspath(__file__))
 CACHE_DIR = os.path.join(PDF_GEN_DIR, "seat_plan_generated")
 IMAGE_PATH = os.path.join(PDF_GEN_DIR, "data", "banner.png")
-CUSTOM_PAGE_SIZE = (304 * mm, 235 * mm)
+CUSTOM_PAGE_SIZE = (364 * mm, 235 * mm)
 
 def seating_payload_digest(data: dict, user_id: str = 'system', template_name: str = 'default') -> str:
     """Create hash including user template configuration"""
@@ -136,19 +136,30 @@ def process_seating_data(json_data):
     
     # Process roll number ranges - sort and extract first/last
     import re
-    
-    def extract_numeric_suffix(roll_no):
-        """Extract trailing digits from roll number for natural sorting"""
-        match = re.search(r'(\d+)$', str(roll_no))
-        return int(match.group(1)) if match else 0
-    
+
+    def extract_branch_prefix(roll_no):
+        """Extract branch prefix for mixed-batch detection (handles both roll formats).
+        New format: BTCS24O1138 → BTCS | Old format: 0901CD231014 → CD"""
+        roll = str(roll_no).strip().upper()
+        m = re.match(r'^([A-Z]+)', roll)
+        if m:
+            return m.group(1)
+        m = re.match(r'^\d+([A-Z]+)', roll)
+        if m:
+            return m.group(1)
+        return roll[:4]
+
     for label, range_info in summary['batch_roll_ranges'].items():
         rolls = range_info['rolls']
         if rolls:
-            # Sort roll numbers naturally by numeric suffix
-            sorted_rolls = sorted(rolls, key=extract_numeric_suffix)
+            # Sort lexicographically — works correctly for both old (0901CD...) and
+            # new (BTCS...) formats; numeric-only suffix sort fails across year prefixes
+            sorted_rolls = sorted(rolls)
             range_info['first'] = sorted_rolls[0]
             range_info['last'] = sorted_rolls[-1]
+            # If multiple branch prefixes exist → lateral/interbranch mix → show 'onwards'
+            prefixes = set(extract_branch_prefix(r) for r in sorted_rolls)
+            range_info['is_onwards'] = len(prefixes) > 1
     
     # Extract branch information with year from batches data
     batches_data = json_data.get('batches', {})
@@ -208,7 +219,7 @@ def create_seating_pdf(filename="algo/pdf_gen/seat_plan_generated/seating_plan.p
     
     def header_and_footer(c, doc):
         c.saveState()
-        page_width, page_height = CUSTOM_PAGE_SIZE
+        page_width, page_height = dynamic_page_size
         BANNER_HEIGHT = 3.5 * cm
         CONTENT_WIDTH = page_width - doc.leftMargin - doc.rightMargin
         
@@ -263,11 +274,14 @@ def create_seating_pdf(filename="algo/pdf_gen/seat_plan_generated/seating_plan.p
         batch_line_items = []
         for label, count in summary_stats['batch_counts'].items():
             roll_range_info = summary_stats.get('batch_roll_ranges', {}).get(label)
-            if roll_range_info and roll_range_info.get('first') and roll_range_info.get('last'):
+            if roll_range_info and roll_range_info.get('first'):
                 first_roll = roll_range_info['first']
-                last_roll = roll_range_info['last']
-                # Show range with count
-                batch_line_items.append(f"{first_roll}-{last_roll} ({count})")
+                if roll_range_info.get('is_onwards'):
+                    # Mixed branch / lateral entry — show open-ended range
+                    batch_line_items.append(f"{first_roll} - onwards ({count})")
+                else:
+                    last_roll = roll_range_info.get('last', '')
+                    batch_line_items.append(f"{first_roll} - {last_roll} ({count})")
             else:
                 # Fallback to label: count format
                 batch_line_items.append(f"{label}: {count}")
@@ -333,9 +347,30 @@ def create_seating_pdf(filename="algo/pdf_gen/seat_plan_generated/seating_plan.p
     
     print(f"📊 PDF Generation - Cols: {num_cols}, Block Structure: {block_structure}, Num Blocks: {num_blocks}")
 
+    # -- Dynamic page width & cell L/R padding ---------------------------
+    # <= 14 cols : default page, default padding (3 pt each side)
+    # 15-16 cols : widen page by 22 mm per extra col above 14; L/R padding -> 2 pt
+    # 17 cols    : widen page (max); L/R padding -> 1 pt
+    # > 17 cols  : page stays at default; L/R padding stays 1 pt
+    _DEF_W, _DEF_H = CUSTOM_PAGE_SIZE
+    if num_cols <= 14:
+        dynamic_page_size = (_DEF_W, _DEF_H)
+        lr_padding = 3
+    elif num_cols <= 16:
+        dynamic_page_size = (_DEF_W + (num_cols - 14) * 22 * mm, _DEF_H)
+        lr_padding = 2
+    elif num_cols <= 17:
+        dynamic_page_size = (_DEF_W + (num_cols - 14) * 22 * mm, _DEF_H)
+        lr_padding = 1
+    else:
+        dynamic_page_size = (_DEF_W, _DEF_H)
+        lr_padding = 1
+    print(f"📄 Page: {dynamic_page_size[0]/mm:.0f}x{dynamic_page_size[1]/mm:.0f}mm  L/R padding: {lr_padding}pt")
+    # --------------------------------------------------------------------
+
     doc = SimpleDocTemplate(
         filename,
-        pagesize=CUSTOM_PAGE_SIZE,
+        pagesize=dynamic_page_size,
         topMargin=3.5 * cm,
         bottomMargin=2.0 * cm,
         leftMargin=1.5 * cm,
@@ -430,7 +465,7 @@ def create_seating_pdf(filename="algo/pdf_gen/seat_plan_generated/seating_plan.p
     room_text = f"Room no. {room_no}"
     room = Paragraph(f"<b>{room_text}</b>", br_style)
     
-    page_width = CUSTOM_PAGE_SIZE[0]
+    page_width = dynamic_page_size[0]
     content_width = page_width - doc.leftMargin - doc.rightMargin
 
     room_width = stringWidth(room_text, "Helvetica-Bold", 12) + 10
@@ -495,8 +530,8 @@ def create_seating_pdf(filename="algo/pdf_gen/seat_plan_generated/seating_plan.p
             ('FONTSIZE', (0, 0), (-1, -1), 9),
             ('TOPPADDING', (0, 0), (-1, -1), cell_padding),
             ('BOTTOMPADDING', (0, 0), (-1, -1), cell_padding),
-            ('LEFTPADDING', (0, 0), (-1, -1), 3),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 3),
+            ('LEFTPADDING', (0, 0), (-1, -1), lr_padding),
+            ('RIGHTPADDING', (0, 0), (-1, -1), lr_padding),
         ])
 
         # ✅ Add THICK BORDERS between blocks (visual separation) using block_ranges

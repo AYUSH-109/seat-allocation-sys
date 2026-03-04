@@ -47,6 +47,98 @@ def ensure_demo_db():
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
         """)
+
+        # ── Migration: fix broken FK in user_activity_log (was users_old_backup) ──
+        cur.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='user_activity_log'")
+        row = cur.fetchone()
+        if row and 'users_old_backup' in row[0]:
+            logger.info("🔧 Migrating user_activity_log: fixing broken FK reference...")
+            cur.executescript("""
+                PRAGMA foreign_keys = OFF;
+                CREATE TABLE user_activity_log_fixed (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    action TEXT NOT NULL,
+                    details TEXT,
+                    endpoint TEXT,
+                    ip_address TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                );
+                INSERT INTO user_activity_log_fixed
+                    SELECT id, user_id, action, details, endpoint, ip_address, created_at
+                    FROM user_activity_log;
+                DROP TABLE user_activity_log;
+                ALTER TABLE user_activity_log_fixed RENAME TO user_activity_log;
+                PRAGMA foreign_keys = ON;
+            """)
+            logger.info("✅ user_activity_log FK fixed.")
+
+        # ── Migration: fix broken FK in allocation_sessions ──────────────────
+        cur.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='allocation_sessions'")
+        row = cur.fetchone()
+        if row and 'users_old_backup' in row[0]:
+            logger.info("🔧 Migrating allocation_sessions: fixing broken FK reference...")
+            cur.executescript("""
+                PRAGMA foreign_keys = OFF;
+                CREATE TABLE allocation_sessions_fixed (
+                    session_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    plan_id TEXT UNIQUE NOT NULL,
+                    user_id INTEGER DEFAULT 1,
+                    name TEXT,
+                    status TEXT CHECK(status IN ('active', 'completed', 'archived', 'draft', 'expired')) DEFAULT 'active',
+                    total_students INTEGER DEFAULT 0,
+                    allocated_count INTEGER DEFAULT 0,
+                    total_capacity INTEGER DEFAULT 0,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    last_activity DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    completed_at DATETIME,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+                );
+                INSERT INTO allocation_sessions_fixed
+                    SELECT session_id, plan_id, user_id, name, status,
+                           total_students, allocated_count, total_capacity,
+                           created_at, last_activity, completed_at
+                    FROM allocation_sessions;
+                DROP TABLE allocation_sessions;
+                ALTER TABLE allocation_sessions_fixed RENAME TO allocation_sessions;
+                PRAGMA foreign_keys = ON;
+            """)
+            logger.info("✅ allocation_sessions FK fixed.")
+
+        # ── Migration: fix broken FK in feedback ─────────────────────────────
+        cur.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='feedback'")
+        row = cur.fetchone()
+        if row and 'users_old_backup' in row[0]:
+            logger.info("🔧 Migrating feedback: fixing broken FK reference...")
+            cur.executescript("""
+                PRAGMA foreign_keys = OFF;
+                CREATE TABLE feedback_fixed (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    issue_type TEXT NOT NULL,
+                    priority TEXT NOT NULL CHECK(priority IN ('low', 'medium', 'high', 'critical')),
+                    description TEXT NOT NULL,
+                    feature_suggestion TEXT,
+                    additional_info TEXT,
+                    file_path TEXT,
+                    file_name TEXT,
+                    status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'reviewed', 'resolved', 'closed')),
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    resolved_at DATETIME,
+                    admin_response TEXT,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+                );
+                INSERT INTO feedback_fixed
+                    SELECT id, user_id, issue_type, priority, description,
+                           feature_suggestion, additional_info, file_path, file_name,
+                           status, created_at, resolved_at, admin_response
+                    FROM feedback;
+                DROP TABLE feedback;
+                ALTER TABLE feedback_fixed RENAME TO feedback;
+                PRAGMA foreign_keys = ON;
+            """)
+            logger.info("✅ feedback FK fixed.")
         
         cur.execute("""
             CREATE INDEX IF NOT EXISTS idx_activity_log_user_date 

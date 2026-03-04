@@ -110,8 +110,9 @@ def _extract_master_plan_data(snapshot: dict) -> list:
             if not rolls:
                 continue
 
-            # Sort naturally by numeric suffix
-            rolls.sort(key=_extract_numeric_suffix)
+            # Sort lexicographically — correct for both old (0901CD...) and new (BTCS...)
+            # formats; numeric-only suffix sort mis-orders rolls across different year prefixes
+            rolls.sort()
 
             # Detect inter-branch mixing within this batch
             prefixes = set(_extract_roll_prefix(r) for r in rolls)
@@ -313,8 +314,8 @@ def _build_master_plan_pdf(
     # Column widths
     col_widths = [
         0.8 * cm,    # S.No
-        3.8 * cm,    # Branch
-        1.5 * cm,    # Semester
+        3.6 * cm,    # Branch  (-0.2 cm)
+        1.7 * cm,    # Semester (+0.2 cm)
         1.5 * cm,    # Room No.
         3.5 * cm,    # From
         3.5 * cm,    # To

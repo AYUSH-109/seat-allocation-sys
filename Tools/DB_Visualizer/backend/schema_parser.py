@@ -123,7 +123,8 @@ class SchemaParser:
             result = conn.execute(query)
             
             # Convert to list of dicts
-            columns = [col[0] for col in result.keys()]
+            # In SQLAlchemy 2.x, result.keys() yields plain strings, not tuples
+            columns = list(result.keys())
             rows = [dict(zip(columns, row)) for row in result.fetchall()]
         
         return rows, total

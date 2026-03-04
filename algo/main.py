@@ -110,6 +110,13 @@ def create_app(test_config=None):
                 logger.info(f"🧹 Startup: Cleaned up {deleted} old activity log entries")
         except Exception as e:
             logger.warning(f"Could not cleanup old activity logs: {e}")
+
+    # Start automatic data cleanup scheduler (runs every 20 days)
+    try:
+        from algo.scripts.clean_old_data import start_scheduler
+        start_scheduler()
+    except Exception as e:
+        logger.warning(f"Could not start cleanup scheduler: {e}")
         
     @app.teardown_appcontext
     def teardown_db(exception):

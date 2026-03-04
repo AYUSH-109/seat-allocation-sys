@@ -107,7 +107,7 @@ const ExcelExportCard = ({ planId, showToast }) => {
       </button>
 
       <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-        💡 Excel file includes all seating details per room with color coding
+        💡 Excel file includes all seating details per room with color coding (use Ms Excel or LibreOffice Calc)
       </p>
 
       <style jsx>{`
