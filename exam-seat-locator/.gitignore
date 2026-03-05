@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Auto-generated index (rebuilt from PLAN-*.json on startup)
+data/summary_index.json
+
+# Flask / OS
+instance/
+.DS_Store
+
+# Sensitive
+.env
+

@@ -56,4 +56,14 @@
 - **Light mode contrast** — `.seat-occupied .seat-label` forced to `#0f172a`; `.sic-label` darkened to `#334155`
 - **Jinja style attrs** — Replaced `{% if %}` blocks in `style=` attributes with inline ternary; eliminates 17 VS Code CSS linter errors
 - **Mobile fix** — `.grid-scroller` + `align-items: stretch` prevents first-column clipping on small screens
+### Data Cleanup Daemon (March 2026)
+- **`core/cleanup.py`** — New daemon thread for server-side plan file cleanup
+  - Scans `DATA_DIR/PLAN-*.json` on startup, then repeats every `CLEANUP_INTERVAL_DAYS` days
+  - Deletes files whose `mtime` is older than `PLAN_RETENTION_DAYS` days
+  - Calls `cache.reload()` automatically after any deletion so the index stays consistent
+  - Thread marked `daemon=True` — does not block clean process exit
+- **`config.py`** — Two new single-point constants for easy future adjustment:
+  - `PLAN_RETENTION_DAYS = 15` — age threshold for deletion
+  - `CLEANUP_INTERVAL_DAYS = 15` — how often the daemon wakes up
+- **`app.py`** — `start_cleanup_daemon(cache)` called immediately after cache load at startup
 

@@ -10,7 +10,8 @@ Enter roll number + exam date + time slot -> see classroom grid with your seat h
 ```
 exam-seat-locator/
 ├── app.py                   # Routes: /, /search, /upload, /reload
-├── config.py                # DATA_DIR, SECRET_KEY, HOST, PORT, ALLOWED_EXTENSIONS
+├── config.py                # DATA_DIR, SECRET_KEY, HOST, PORT, ALLOWED_EXTENSIONS,
+│                            #   PLAN_RETENTION_DAYS, CLEANUP_INTERVAL_DAYS
 ├── requirements.txt
 ├── core/
 │   ├── __init__.py          # Exports AppCache singleton (cache.load() on startup)
@@ -20,7 +21,8 @@ exam-seat-locator/
 │   ├── extractor.py         # Turns raw PLAN dict -> list of room sessions
 │   ├── indexer.py           # Builds O(1) student_index + session_index
 │   ├── loader.py            # Reads PLAN-*.json from disk, parses dates
-│   └── matrix.py            # Builds 2-D seat grid from room config + students
+│   ├── matrix.py            # Builds 2-D seat grid from room config + students
+│   └── cleanup.py           # Daemon thread — removes PLAN files older than PLAN_RETENTION_DAYS
 ├── data/                    # PLAN-*.json files + summary_index.json (auto-generated)
 ├── templates/
 │   ├── index.html           # Search form — date/time from dynamic dropdowns
@@ -42,14 +44,18 @@ python app.py
 # -> http://127.0.0.1:5000
 ```
 
+> **Retention period** — edit `PLAN_RETENTION_DAYS` and `CLEANUP_INTERVAL_DAYS` in `config.py`
+> to change how long plan files are kept and how often the daemon scans.
+
 ---
 
 ## How It Works
 
 1. On startup `AppCache.load()` scans `data/PLAN-*.json`, builds `summary_index.json`
 2. Top-3 most-hit plan files are pre-warmed into the LRU
-3. Student searches: roll number -> `_index` (O(1)) -> filename -> LRU hit or disk read -> seat
-4. Result page renders classroom grid; clicking your seat opens a detail card
+3. Cleanup daemon starts immediately — deletes any plan file older than `PLAN_RETENTION_DAYS` days, then sleeps for `CLEANUP_INTERVAL_DAYS` days and repeats
+4. Student searches: roll number -> `_index` (O(1)) -> filename -> LRU hit or disk read -> seat
+5. Result page renders classroom grid; clicking your seat opens a detail card
 
 ---
 
@@ -78,6 +84,16 @@ python app.py
 - **`summary_index.json`** — maps every roll number -> list of filenames; fits in L2 cache (~200KB)
 - **`student_index`** — `(roll, date, start, end)` -> `{room, session, row, col}` — O(1) lookup
 - **`matrix.py`** — stores `position` (e.g. `B5`) in every cell for grid-ref display
+- **`cleanup.py`** — daemon thread (`daemon=True`); first run immediately at startup, then every `CLEANUP_INTERVAL_DAYS` days; calls `cache.reload()` after any deletion
+
+### Adjusting retention
+
+All cleanup timing is controlled by two constants in `config.py` — change them once and every part of the system picks up the new value automatically:
+
+```python
+PLAN_RETENTION_DAYS   = 15   # delete files older than this
+CLEANUP_INTERVAL_DAYS = 15   # how often the daemon wakes up
+```
 
 ---
 

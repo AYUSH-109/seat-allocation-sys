@@ -30,6 +30,11 @@ from werkzeug.utils import secure_filename
 
 import config
 from core import cache          # pre-loaded singleton — logs now visible
+from core.cleanup import start_cleanup_daemon
+
+# Start the background cleanup daemon as soon as the process is up.
+# Runs cleanup immediately, then repeats every config.CLEANUP_INTERVAL_DAYS days.
+start_cleanup_daemon(cache)
 
 
 def _allowed_file(filename: str) -> bool:
