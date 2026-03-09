@@ -122,52 +122,107 @@ async def send_to_google_apps_script(
     files: Optional[dict] = None
 ) -> dict:
     """
-    Send request to Google Apps Script Web App
-    
-    Args:
-        endpoint: API endpoint (submit, get, update)
-        data: Request data
-        files: Optional files to upload
-        
-    Returns:
-        Response from Google Apps Script
+    Send request to Google Apps Script Web App.
+
+    GAS web-app execution model:
+      1. POST  → script.google.com/macros/s/<ID>/exec   (doPost runs here; data written to sheet)
+                  → 302  Location: script.googleusercontent.com/macros/echo?...
+      2. GET   → echo URL                                (retrieve the pre-computed JSON response)
+
+    httpx's default follow_redirects=True converts POST→GET on a 302 (RFC-correct),
+    which means doGet() runs at the echo URL instead of the intended doPost(), so the
+    request body is never seen and nothing gets written.
+    Fix: disable auto-redirect, capture the Location, then GET it to read the response.
     """
     url = (
         f"{settings.GOOGLE_APPS_SCRIPT_URL}"
         f"?action={endpoint}&apiKey={settings.GOOGLE_APPS_SCRIPT_API_KEY}"
     )
-    
-    # Keep headers minimal for Apps Script compatibility.
-    # Auth is sent as query parameter because Apps Script does not reliably expose custom headers.
-    headers = {}
-    
+
     try:
         timeout = httpx.Timeout(settings.APPS_SCRIPT_TIMEOUT_SECONDS)
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
+
+            # ── Step 1: POST (executes doPost / writes to sheet) ──────────────
             if files:
-                # Send multipart/form-data
-                response = await client.post(
-                    url,
-                    data=data,
-                    files=files,
-                    headers=headers
-                )
+                post_response = await client.post(url, data=data, files=files)
             else:
-                # Send JSON
-                response = await client.post(
-                    url,
-                    json=data,
-                    headers=headers
+                post_response = await client.post(url, json=data)
+
+            # GAS always responds with a 302 after executing doPost
+            if post_response.status_code not in (301, 302, 303, 307, 308):
+                # Unexpected: GAS returned a direct response; try to parse it
+                logger.warning(
+                    f"GAS POST returned {post_response.status_code} (expected 302). "
+                    f"Body[:200]: {post_response.text[:200]}"
                 )
-            
-            response.raise_for_status()
-            return response.json()
-            
+                post_response.raise_for_status()
+                return post_response.json()
+
+            echo_url = post_response.headers.get("location", "")
+            if not echo_url:
+                raise HTTPException(
+                    status_code=502,
+                    detail="Google Apps Script redirect missing Location header"
+                )
+
+            logger.info(f"GAS executed doPost → fetching response from echo URL")
+
+            # ── Step 2: GET the echo URL to retrieve the JSON response ────────
+            get_response = await client.get(echo_url)
+            get_response.raise_for_status()
+
+            content_type = get_response.headers.get("content-type", "")
+            if "json" not in content_type and get_response.text.strip().startswith("<"):
+                logger.error(
+                    f"GAS echo URL returned HTML instead of JSON "
+                    f"(content-type: {content_type}). "
+                    f"Make sure the GAS web app is deployed as "
+                    f"'Execute as: Me' and 'Who has access: Anyone'."
+                    f"\nBody[:300]: {get_response.text[:300]}"
+                )
+                raise HTTPException(
+                    status_code=502,
+                    detail=(
+                        "Google Apps Script returned HTML instead of JSON. "
+                        "Ensure the web app is deployed with "
+                        "'Execute as: Me' and 'Who has access: Anyone'."
+                    )
+                )
+
+            try:
+                result = get_response.json()
+            except Exception:
+                logger.error(
+                    f"GAS non-JSON response ({get_response.status_code}): "
+                    f"{get_response.text[:500]}"
+                )
+                raise HTTPException(
+                    status_code=502,
+                    detail="Google Apps Script returned a non-JSON response"
+                )
+
+            if not result.get("success"):
+                logger.warning(
+                    f"GAS returned failure for '{endpoint}': {result.get('message')}"
+                )
+
+            return result
+
     except httpx.TimeoutException:
         logger.error(f"Timeout while calling Google Apps Script: {endpoint}")
         raise HTTPException(
             status_code=504,
             detail="Request to Google Apps Script timed out"
+        )
+    except httpx.HTTPStatusError as e:
+        logger.error(
+            f"HTTP {e.response.status_code} from Google Apps Script: "
+            f"{e.response.text[:300]}"
+        )
+        raise HTTPException(
+            status_code=502,
+            detail=f"Google Apps Script returned HTTP {e.response.status_code}"
         )
     except httpx.HTTPError as e:
         logger.error(f"HTTP error calling Google Apps Script: {str(e)}")
@@ -175,6 +230,8 @@ async def send_to_google_apps_script(
             status_code=502,
             detail=f"Error communicating with Google Apps Script: {str(e)}"
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Unexpected error calling Google Apps Script: {str(e)}")
         raise HTTPException(

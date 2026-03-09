@@ -53,7 +53,7 @@ def index():
     return render_template(
         "index.html",
         dates=cache.unique_dates,
-        times=cache.unique_times,
+        time_slots=cache.unique_time_slots,
         file_count=cache.file_count,
         student_count=cache.student_count,
         plan_meta=cache.plan_meta(),
@@ -62,19 +62,20 @@ def index():
 
 @app.route("/search", methods=["POST"])
 def search():
-    enrollment = request.form.get("enrollment", "").strip().upper()
-    exam_date  = request.form.get("exam_date",  "").strip()
-    start_time = request.form.get("start_time", "").strip()
-    end_time   = request.form.get("end_time",   "").strip()
+    enrollment = request.form.get("enrollment",  "").strip().upper()
+    exam_date  = request.form.get("exam_date",   "").strip()
+    time_slot  = request.form.get("time_slot",   "").strip()
 
     # ── Validate input ────────────────────────────────────────────────────────
-    if not all([enrollment, exam_date, start_time, end_time]):
+    if not all([enrollment, exam_date, time_slot]):
         flash("All fields are required.", "error")
         return redirect(url_for("index"))
 
-    if start_time >= end_time:
-        flash("End time must be after start time.", "error")
+    if "-" not in time_slot:
+        flash("Invalid time slot format.", "error")
         return redirect(url_for("index"))
+
+    start_time, end_time = [t.strip() for t in time_slot.split("-", 1)]
 
     # ── O(1) cache lookup ─────────────────────────────────────────────────────
     student_info = cache.lookup_student(enrollment, exam_date, start_time, end_time)

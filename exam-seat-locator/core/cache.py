@@ -50,11 +50,12 @@ class AppCache:
     """
 
     def __init__(self) -> None:
-        self._lru:          LRUCache = LRUCache(maxsize=5)
-        self._index:        dict     = {}
-        self.unique_dates:  list     = []
-        self.unique_times:  list     = []
-        self.loaded:        bool     = False
+        self._lru:             LRUCache = LRUCache(maxsize=5)
+        self._index:           dict     = {}
+        self.unique_dates:     list     = []
+        self.unique_times:     list     = []
+        self.unique_time_slots: list    = []
+        self.loaded:           bool     = False
 
     # ── public API ────────────────────────────────────────────────────────────
 
@@ -64,9 +65,10 @@ class AppCache:
         with the most-accessed plan files.  Called once at startup.
         """
         logger.info("CACHE  loading summary index")
-        self._index       = load_index()
-        self.unique_dates = self._index.get("global_dates", [])
-        self.unique_times = self._index.get("global_times", [])
+        self._index            = load_index()
+        self.unique_dates      = self._index.get("global_dates", [])
+        self.unique_times      = self._index.get("global_times", [])
+        self.unique_time_slots = self._derive_time_slots()
 
         # Pre-warm LRU with historically most-used files
         for fname in get_top_files(self._index, n=3):
@@ -87,9 +89,10 @@ class AppCache:
         Call this after uploading a new plan file.
         """
         logger.info("CACHE  rebuild triggered")
-        self._index       = build_index()
-        self.unique_dates = self._index.get("global_dates", [])
-        self.unique_times = self._index.get("global_times", [])
+        self._index            = build_index()
+        self.unique_dates      = self._index.get("global_dates", [])
+        self.unique_times      = self._index.get("global_times", [])
+        self.unique_time_slots = self._derive_time_slots()
         self._lru.clear()
         for fname in get_top_files(self._index, n=3):
             if fname:
@@ -126,6 +129,17 @@ class AppCache:
                 return result
 
         return None
+
+    # ── private helpers ───────────────────────────────────────────────────────
+
+    def _derive_time_slots(self) -> list:
+        """Return sorted unique time-slot strings (e.g. '09:00-12:00') from plan metadata."""
+        slots = sorted(set(
+            m.get("time_slot", "")
+            for m in self._index.get("plan_meta", {}).values()
+            if m.get("time_slot")
+        ))
+        return slots
 
     # ── stats helpers (used by /reload flash + future /stats endpoint) ───────
 

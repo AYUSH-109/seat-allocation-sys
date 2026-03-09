@@ -38,16 +38,15 @@ class Settings(BaseSettings):
     @field_validator('CORS_ORIGINS', mode='before')
     @classmethod
     def validate_and_merge_cors_origins(cls, value):
-        """Accept list or comma-separated origins and merge with safe local defaults."""
-        if value is None:
+        """
+        Merge caller-supplied origins with the safe localhost defaults.
+        pydantic_settings already JSON-parses List[str] env vars before this
+        validator runs, so `value` is normally already a list here.
+        """
+        if not value:
             return DEFAULT_CORS_ORIGINS.copy()
 
-        origins = value
-        if isinstance(value, str):
-            origins = [origin.strip() for origin in value.split(',') if origin.strip()]
-
-        if not isinstance(origins, list):
-            return DEFAULT_CORS_ORIGINS.copy()
+        origins = value if isinstance(value, list) else list(value)
 
         merged = []
         for origin in [*origins, *DEFAULT_CORS_ORIGINS]:

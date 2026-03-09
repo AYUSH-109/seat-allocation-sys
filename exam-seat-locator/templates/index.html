@@ -78,29 +78,15 @@
           </div>
         </div>
 
-        <div class="field-row">
-          <div class="field-group">
-            <label for="start_time" class="field-label">Start Time</label>
-            <div class="field-wrapper">
-              <select id="start_time" name="start_time" class="field-input field-select" required>
-                <option value="" disabled selected>Select start time</option>
-                {% for t in times %}
-                  <option value="{{ t }}">{{ t }}</option>
-                {% endfor %}
-              </select>
-            </div>
-          </div>
-
-          <div class="field-group">
-            <label for="end_time" class="field-label">End Time</label>
-            <div class="field-wrapper">
-              <select id="end_time" name="end_time" class="field-select field-input" required>
-                <option value="" disabled selected>Select end time</option>
-                {% for t in times %}
-                  <option value="{{ t }}">{{ t }}</option>
-                {% endfor %}
-              </select>
-            </div>
+        <div class="field-group">
+          <label for="time_slot" class="field-label">Time Slot</label>
+          <div class="field-wrapper">
+            <select id="time_slot" name="time_slot" class="field-input field-select" required>
+              <option value="" disabled selected>Select time slot</option>
+              {% for slot in time_slots %}
+                <option value="{{ slot }}">{{ slot }}</option>
+              {% endfor %}
+            </select>
           </div>
         </div>
 

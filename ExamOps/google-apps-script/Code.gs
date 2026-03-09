@@ -1,8 +1,8 @@
 /**
  * Google Apps Script for Exam Invigilation Reporting System
- * Updated: March 3, 2026
- * Features: Time-slot based storage, Gmail authentication, Edit functionality
- * 
+ * Updated: March 9, 2026
+ * Features: Time-slot based storage, Master sheet, Gmail authentication, Edit functionality
+ *
  * SETUP INSTRUCTIONS:
  * 1. Create a new Google Sheets document
  * 2. Note the Spreadsheet ID from the URL
@@ -10,8 +10,9 @@
  * 4. Note the Folder ID from the URL
  * 5. Replace SPREADSHEET_ID and DRIVE_FOLDER_ID below
  * 6. Set API_KEY to match your backend configuration
- * 7. Deploy as Web App with "Anyone" access
- * 8. Run initializeSheets() function once to create all time-slot sheets
+ * 7. Deploy as Web App with "Execute as: Me" and "Who has access: Anyone"
+ * 8. Run initializeSheets() once to create the Master sheet + all time-slot sheets
+ *    (Master will be the first/default tab — used by the published CSV export)
  */
 
 // ========================================
@@ -22,7 +23,10 @@ const CONFIG = {
   SPREADSHEET_ID: '1uaAaoKrCRm8quIhfL8aPCvsfxcfmJul6ie2lM8sAsT8',
   DRIVE_FOLDER_ID: '1ANgYJECOVApj9DrrNi5mgs9zoCYkJy1i',
   API_KEY: 'X9fT7qLm2ZpR4vYc8WjK1sHbN6uQeD3aGoVr5tUy', // Must match backend API key
-  
+
+  // Master sheet name — this is the DEFAULT tab and the one exported by the published CSV URL
+  MASTER_SHEET: 'Master',
+
   // Sheet names for different time slots
   SHEETS: {
     '9AM-11AM': '9AM-11AM',
@@ -261,24 +265,21 @@ function handleSubmit(data) {
       // Update existing record
       sheet.getRange(existingRow, 1, 1, rowData.length).setValues([rowData]);
       Logger.log('Updated existing record at row ' + existingRow);
-      
-      return createResponse({
-        success: true,
-        message: 'Report updated successfully',
-        data: { record_id: data.record_id }
-      });
     } else {
       // Add new record
       sheet.appendRow(rowData);
-      Logger.log('Added new record');
-      
-      return createResponse({
-        success: true,
-        message: 'Report submitted successfully',
-        data: { record_id: data.record_id }
-      });
+      Logger.log('Added new record to time-slot sheet: ' + sheet.getName());
     }
-    
+
+    // Mirror every submission to the Master sheet so the published CSV export shows all entries
+    upsertMasterRow(rowData, data.record_id);
+
+    return createResponse({
+      success: true,
+      message: existingRow > 0 ? 'Report updated successfully' : 'Report submitted successfully',
+      data: { record_id: data.record_id }
+    });
+
   } catch (error) {
     Logger.log('Error in handleSubmit: ' + error.toString());
     return createResponse({
@@ -469,9 +470,11 @@ function handleUpdate(data) {
       if (sourceSheet && sourceSheet.getName() !== targetSheet.getName() && sourceRow > 0) {
         sourceSheet.deleteRow(sourceRow);
       } else if (sourceSheet && sourceSheet.getName() === targetSheet.getName() && sourceRow > 0 && sourceRow !== targetRow) {
-        // Defensive cleanup if same-sheet append happened unexpectedly
         sourceSheet.deleteRow(sourceRow);
       }
+
+      // Mirror update to Master sheet
+      upsertMasterRow(rowData, data.record_id);
 
       Logger.log('Updated record and ensured correct slot sheet placement for record_id: ' + data.record_id);
 
@@ -499,6 +502,48 @@ function handleUpdate(data) {
 // ========================================
 // GOOGLE SHEETS HELPERS
 // ========================================
+
+/**
+ * Upsert a row into the Master sheet.
+ * The Master sheet is the default/first tab so that the published CSV
+ * URL (without a gid= param) shows all submissions across all time slots.
+ *
+ * @param {Array} rowData  - Same rowData array used for the time-slot sheet
+ * @param {string} recordId - The record ID for deduplication
+ */
+function upsertMasterRow(rowData, recordId) {
+  try {
+    const spreadsheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    let masterSheet = spreadsheet.getSheetByName(CONFIG.MASTER_SHEET);
+
+    if (!masterSheet) {
+      // Create Master sheet and move it to the front so it becomes the default tab
+      masterSheet = spreadsheet.insertSheet(CONFIG.MASTER_SHEET, 0);
+      const headerRange = masterSheet.getRange(1, 1, 1, CONFIG.HEADERS.length);
+      headerRange.setValues([CONFIG.HEADERS]);
+      headerRange.setFontWeight('bold');
+      headerRange.setBackground('#1a73e8');
+      headerRange.setFontColor('#ffffff');
+      masterSheet.setFrozenRows(1);
+      for (let i = 1; i <= CONFIG.HEADERS.length; i++) {
+        masterSheet.autoResizeColumn(i);
+      }
+      Logger.log('Created Master sheet');
+    }
+
+    const existingRow = findRecordRow(masterSheet, recordId);
+    if (existingRow > 0) {
+      masterSheet.getRange(existingRow, 1, 1, rowData.length).setValues([rowData]);
+    } else {
+      masterSheet.appendRow(rowData);
+    }
+
+    Logger.log('Master sheet updated for record_id: ' + recordId);
+  } catch (error) {
+    // Log but do not fail the whole request if Master sheet write fails
+    Logger.log('Warning: failed to update Master sheet: ' + error.toString());
+  }
+}
 
 /**
  * Get or create sheet for a time slot
@@ -619,14 +664,36 @@ function createResponse(data, statusCode) {
  * Initialize all sheets (run this once)
  */
 function initializeSheets() {
+  // Create Master sheet first (index 0) so it becomes the default tab
+  // and is exported by the published CSV URL without a gid= parameter
+  const spreadsheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  let masterSheet = spreadsheet.getSheetByName(CONFIG.MASTER_SHEET);
+  if (!masterSheet) {
+    masterSheet = spreadsheet.insertSheet(CONFIG.MASTER_SHEET, 0);
+    const headerRange = masterSheet.getRange(1, 1, 1, CONFIG.HEADERS.length);
+    headerRange.setValues([CONFIG.HEADERS]);
+    headerRange.setFontWeight('bold');
+    headerRange.setBackground('#1a73e8');
+    headerRange.setFontColor('#ffffff');
+    masterSheet.setFrozenRows(1);
+    for (let i = 1; i <= CONFIG.HEADERS.length; i++) {
+      masterSheet.autoResizeColumn(i);
+    }
+    Logger.log('Created Master sheet at position 0');
+  } else {
+    // Ensure Master is at position 0 (first/default tab)
+    spreadsheet.setActiveSheet(masterSheet);
+    spreadsheet.moveActiveSheet(1);
+    Logger.log('Master sheet already exists, moved to position 1');
+  }
+
   const timeSlots = ['9AM-11AM', '11AM-1PM', '1PM-4PM', '4PM-6PM'];
-  
   for (const timeSlot of timeSlots) {
     getOrCreateSheet(timeSlot);
     Logger.log('Initialized sheet for ' + timeSlot);
   }
-  
-  Logger.log('All sheets initialized successfully');
+
+  Logger.log('All sheets initialized successfully. Master sheet is the default CSV export tab.');
 }
 
 /**
