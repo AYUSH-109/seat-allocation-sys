@@ -858,6 +858,446 @@ def export_attendance():
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+
+
+# ============================================================================
+# HELPERS: Debarred List Parsing
+# ============================================================================
+
+def parse_debarred_file(file_obj):
+    """
+    Parse an uploaded CSV or Excel (.xlsx) debarred list file.
+
+    Supports two formats:
+
+    Format 1 – "Row-per-debarment":
+        enrollment_no, subject_code, subject_name
+        BTCS24O1001,   CS601,        Operating Systems
+        BTCS24O1002,   CS601,        Operating Systems
+
+    Format 2 – "Matrix" (columns = subjects, Y/debarred = debarred):
+        enrollment_no, CS601-Operating Systems, CS602-Data Structures
+        BTCS24O1001,   Y,
+        BTCS24O1002,   ,                        Y
+
+    Returns:
+        dict: {
+            subject_code: {
+                'subject_name': str,
+                'debarred_students': set(enrollment_strings)
+            }
+        }
+        or {} on failure.
+    """
+    import csv
+    import io as _io
+
+    filename = getattr(file_obj, 'filename', '')
+    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else 'csv'
+
+    rows = []
+    try:
+        if ext in ('xlsx', 'xls'):
+            import openpyxl
+            wb = openpyxl.load_workbook(file_obj, read_only=True, data_only=True)
+            ws = wb.active
+            for row in ws.iter_rows(values_only=True):
+                rows.append([str(c).strip() if c is not None else '' for c in row])
+        else:
+            raw = file_obj.read()
+            if isinstance(raw, bytes):
+                raw = raw.decode('utf-8-sig', errors='replace')
+            reader = csv.reader(_io.StringIO(raw))
+            for row in reader:
+                rows.append([c.strip() for c in row])
+    except Exception as e:
+        logger.error(f"parse_debarred_file error: {e}")
+        return {}
+
+    # Strip completely empty rows
+    rows = [r for r in rows if any(c for c in r)]
+    if not rows:
+        return {}
+
+    header_row = [h.lower().strip() for h in rows[0]]
+
+    # Locate enrollment column (first column whose header contains 'enroll', 'roll', or 'no')
+    enroll_col = next(
+        (i for i, h in enumerate(header_row)
+         if any(kw in h for kw in ('enroll', 'roll', 'no.', 'no', 'regd', 'reg'))),
+        0
+    )
+
+    # Detect Format 1: a dedicated subject_code column exists
+    SUBJECT_CODE_KEYS = ('subject_code', 'subjectcode', 'sub_code', 'subcode', 'subject code',
+                         'code', 'sub code')
+    SUBJECT_NAME_KEYS = ('subject_name', 'subjectname', 'subject name', 'sub_name', 'subname',
+                         'subject', 'name')
+
+    sub_code_col = next(
+        (i for i, h in enumerate(header_row) if h in SUBJECT_CODE_KEYS), None
+    )
+    sub_name_col = next(
+        (i for i, h in enumerate(header_row)
+         if any(k in h for k in SUBJECT_NAME_KEYS) and i != enroll_col and i != sub_code_col),
+        None
+    )
+
+    result = {}
+
+    # Non-debarred / "safe" cell values — everything else is treated as debarred
+    NOT_DEBARRED = {'', '0', 'n', 'no', 'false', 'none', 'nan', '-', 'nil', 'null'}
+
+    def _is_debarred_cell(cell_value: str) -> bool:
+        """Return True if a cell value means the student is debarred for that subject.
+        Explicit 'yes'/'y'/'debarred'/'detained' markers → True.
+        Any non-empty, non-zero value also → True (handles absence-counts like '3', '5', etc.).
+        Explicit 'no'/'0'/empty → False.
+        """
+        v = cell_value.strip().lower()
+        if v in NOT_DEBARRED:
+            return False
+        return True  # any other value (Y, yes, 1, 3, 5, X, debarred, detained …)
+
+    if sub_code_col is not None:
+        # ── Format 1: rows  (enroll, subject_code, subject_name) ─────────────
+        for row in rows[1:]:
+            if len(row) <= enroll_col:
+                continue
+            enroll = row[enroll_col].strip()
+            if not enroll or enroll.lower() in NOT_DEBARRED:
+                continue
+            sub_code = (row[sub_code_col].strip() if len(row) > sub_code_col else 'SUBJECT') or 'SUBJECT'
+            sub_name = (row[sub_name_col].strip() if sub_name_col is not None and len(row) > sub_name_col else sub_code) or sub_code
+            if sub_code not in result:
+                result[sub_code] = {'subject_name': sub_name, 'debarred_students': set()}
+            result[sub_code]['debarred_students'].add(enroll)
+    else:
+        # ── Format 2 (Matrix): each column after enrollment is a subject ──────
+        # Key rule: use the FULL original header as the unique subject key so that
+        # columns named "subject 1", "subject 2" … are never collapsed into one.
+        subject_cols = {}  # col_index -> {subject_key, subject_name}
+        seen_keys = {}     # tracks how many times a short code has been used
+        for i, h in enumerate(rows[0]):
+            if i == enroll_col or not h.strip():
+                continue
+            h_clean = h.strip()
+
+            # Attempt to extract a short code prefix (e.g. "CS601" from "CS601-OS")
+            # A short code is a run of uppercase letters + digits with no spaces
+            import re as _re
+            code_match = _re.match(r'^([A-Za-z]{1,4}\d{2,6})', h_clean)
+
+            if code_match:
+                # Header starts with a recognisable subject-code like CS601
+                short_code = code_match.group(1).upper()
+                remaining   = h_clean[len(code_match.group(1)):].lstrip(' -_:').strip()
+                subject_name = remaining if remaining else h_clean
+            else:
+                # Generic header ("subject 1", "Mathematics", etc.)
+                # Use the FULL header as the unique key to prevent collisions
+                short_code   = h_clean.upper()   # whole header → unique key
+                subject_name = h_clean
+
+            # If this short_code was already seen, append a counter to keep it unique
+            count = seen_keys.get(short_code, 0) + 1
+            seen_keys[short_code] = count
+            unique_key = short_code if count == 1 else f"{short_code}_{count}"
+
+            subject_cols[i] = {'subject_key': unique_key, 'subject_name': subject_name}
+            logger.debug(f"  Debarred matrix col {i}: key='{unique_key}' name='{subject_name}'")
+
+        logger.info(f"parse_debarred_file: found {len(subject_cols)} subject columns: "
+                    f"{[v['subject_key'] for v in subject_cols.values()]}")
+
+        for row in rows[1:]:
+            if len(row) <= enroll_col:
+                continue
+            enroll = row[enroll_col].strip()
+            if not enroll or enroll.lower() in NOT_DEBARRED:
+                continue
+            for col_i, sub_info in subject_cols.items():
+                cell = row[col_i].strip() if col_i < len(row) else ''
+                if _is_debarred_cell(cell):
+                    key = sub_info['subject_key']
+                    if key not in result:
+                        result[key] = {'subject_name': sub_info['subject_name'],
+                                       'debarred_students': set()}
+                    result[key]['debarred_students'].add(enroll)
+
+    logger.info(f"parse_debarred_file result: {len(result)} subjects, "
+                f"sizes={[len(v['debarred_students']) for v in result.values()]}")
+    return result
+
+
+def identify_batch_for_debarred(debarred_data, batches):
+    """
+    Auto-detect which plan-batch a debarred list file belongs to.
+
+    Compares enrollment numbers found in the file against each batch's
+    student list and returns the best-matching batch_name (or None).
+    """
+    if not batches or not debarred_data:
+        return None
+
+    # Collect all enrollments mentioned in the debarred file
+    file_enrollments = set()
+    for sub_info in debarred_data.values():
+        file_enrollments.update(sub_info.get('debarred_students', set()))
+
+    if not file_enrollments:
+        return None
+
+    best_batch = None
+    best_score = -1
+
+    for batch_name, batch_data in batches.items():
+        batch_students = batch_data.get('students', [])
+        batch_enrollments = {
+            s.get('roll_number', '') for s in batch_students if s.get('roll_number')
+        }
+        if not batch_enrollments:
+            continue
+
+        intersection = file_enrollments & batch_enrollments
+        if intersection:
+            # Score = what fraction of file enrollments matched this batch
+            score = len(intersection) / len(file_enrollments)
+            if score > best_score:
+                best_score = score
+                best_batch = batch_name
+
+    return best_batch if best_score > 0 else None
+
+
+# ============================================================================
+# POST /api/analyze-debarred-file - Preview a debarred list file
+# ============================================================================
+@pdf_bp.route('/analyze-debarred-file', methods=['POST'])
+@token_required
+def analyze_debarred_file():
+    """
+    Analyze a single uploaded debarred file.
+
+    Form data:
+        plan_id: str
+        room_no:  str (optional)
+        file:     uploaded CSV / XLSX file
+
+    Returns JSON:
+        detected_batch:        str | null
+        subjects:              list[{code, name, debarred_count}]
+        batch_total_students:  int
+        filename:              str
+    """
+    import json as _json
+
+    plan_id = request.form.get('plan_id')
+    room_no = request.form.get('room_no')
+    uploaded_file = request.files.get('file')
+
+    if not uploaded_file:
+        return jsonify({"error": "No file uploaded"}), 400
+    if not plan_id:
+        return jsonify({"error": "plan_id required"}), 400
+
+    data = {'plan_id': plan_id, 'room_no': room_no, 'room_name': room_no}
+    seating_payload, _ = get_seating_data_hybrid(data, user_id=request.user_id)
+
+    if not seating_payload:
+        return jsonify({"error": "Plan not found"}), 404
+
+    batches = seating_payload.get('batches', {})
+
+    debarred_data = parse_debarred_file(uploaded_file)
+
+    detected_batch = identify_batch_for_debarred(debarred_data, batches)
+
+    subjects = [
+        {
+            'code': code,
+            'name': info['subject_name'],
+            'debarred_count': len(info['debarred_students'])
+        }
+        for code, info in debarred_data.items()
+    ]
+
+    batch_total = 0
+    if detected_batch and detected_batch in batches:
+        batch_total = len(batches[detected_batch].get('students', []))
+
+    return jsonify({
+        "detected_batch": detected_batch,
+        "subjects": subjects,
+        "batch_total_students": batch_total,
+        "filename": uploaded_file.filename
+    })
+
+
+# ============================================================================
+# POST /api/export-attendance-debarred  — Attendance with Debarred filter
+# ============================================================================
+@pdf_bp.route('/export-attendance-debarred', methods=['POST'])
+@token_required
+def export_attendance_debarred():
+    """
+    Generate a ZIP of attendance PDFs with debarred students filtered out.
+
+    Form data (multipart):
+        plan_id:        str
+        room_no:        str  (optional)
+        metadata:       JSON string  (same fields as /export-attendance)
+        debarred_files: one or more uploaded CSV/XLSX debarred list files
+
+    Logic:
+        For each batch in the plan:
+          - If a debarred file was matched → generate one PDF per subject in that file
+            (debarred students are excluded from that subject's attendance)
+          - If no debarred file was matched  → generate a single normal attendance PDF
+
+    Returns: application/zip
+    """
+    import io as _io
+    import time
+    import json as _json
+    import zipfile
+
+    try:
+        plan_id   = request.form.get('plan_id')
+        room_no   = request.form.get('room_no')
+        meta_str  = request.form.get('metadata', '{}')
+
+        try:
+            frontend_metadata = _json.loads(meta_str)
+        except Exception:
+            frontend_metadata = {}
+
+        if not plan_id:
+            return jsonify({"error": "plan_id is required"}), 400
+
+        # ── Retrieve seating / batch data ──────────────────────────────────────
+        data = {'plan_id': plan_id, 'room_no': room_no, 'room_name': room_no}
+        seating_payload, _ = get_seating_data_hybrid(data, user_id=request.user_id)
+
+        if not seating_payload:
+            return jsonify({"error": "Plan data not found"}), 404
+
+        batches = seating_payload.get('batches', {})
+        if not batches:
+            return jsonify({"error": "No batch data found in plan"}), 404
+
+        # ── Parse every uploaded file → map to batch ───────────────────────────
+        uploaded_files = request.files.getlist('debarred_files')
+        debarred_by_batch = {}  # batch_name → {sub_code: {subject_name, debarred_students}}
+
+        for f in uploaded_files:
+            debarred_data = parse_debarred_file(f)
+            if not debarred_data:
+                logger.warning(f"Could not parse debarred file: {f.filename}")
+                continue
+            detected_batch = identify_batch_for_debarred(debarred_data, batches)
+            if detected_batch:
+                debarred_by_batch[detected_batch] = debarred_data
+                logger.info(f"Debarred file '{f.filename}' → batch '{detected_batch}' "
+                            f"({len(debarred_data)} subjects)")
+            else:
+                logger.warning(f"Debarred file '{f.filename}': no matching batch found")
+
+        # ── Build base metadata ────────────────────────────────────────────────
+        target_room = (seating_payload.get('metadata', {}).get('room_no')
+                       or room_no or 'N/A')
+        base_meta = {
+            'exam_title':               frontend_metadata.get('exam_title', 'EXAMINATION-ATTENDANCE SHEET'),
+            'course_name':              frontend_metadata.get('course_name', 'N/A'),
+            'course_code':              frontend_metadata.get('course_code', 'N/A'),
+            'date':                     frontend_metadata.get('date', ''),
+            'time':                     frontend_metadata.get('time', ''),
+            'year':                     frontend_metadata.get('year', str(datetime.now().year)),
+            'room_no':                  target_room,
+            'attendance_dept_name':     frontend_metadata.get('attendance_dept_name',
+                                                               'Computer Science and Engineering'),
+            'attendance_year':          frontend_metadata.get('attendance_year',
+                                                               datetime.now().year),
+            'attendance_exam_heading':  frontend_metadata.get('attendance_exam_heading',
+                                                               'SESSIONAL EXAMINATION'),
+            'attendance_banner_path':   frontend_metadata.get('attendance_banner_path', ''),
+        }
+
+        from algo.attendence_gen.attend_gen import create_attendance_pdf
+
+        ts = int(time.time())
+        zip_buffer = _io.BytesIO()
+        temp_pdfs  = []
+
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for batch_name, batch_data in batches.items():
+                students   = batch_data.get('students', [])
+                batch_info = batch_data.get('info', {})
+                if not students:
+                    continue
+
+                safe_batch = batch_name.replace('/', '-').replace(' ', '_')
+
+                if batch_name in debarred_by_batch:
+                    # ── Debarred list available → one PDF per subject ──────────
+                    for sub_code, sub_info in debarred_by_batch[batch_name].items():
+                        debarred_rolls = sub_info.get('debarred_students', set())
+                        # Keep ALL students; mark debarred ones so the PDF can flag them
+                        filtered_students = [
+                            {**s, 'is_debarred': s.get('roll_number', '') in debarred_rolls}
+                            for s in students
+                        ]
+                        subject_meta = {
+                            **base_meta,
+                            'course_name': sub_info.get('subject_name', sub_code),
+                            'course_code': sub_code,
+                        }
+                        safe_sub  = sub_code.replace('/', '-').replace(' ', '_')
+                        temp_file = f"tmp_deb_{safe_batch}_{safe_sub}_{ts}.pdf"
+                        temp_pdfs.append(temp_file)
+
+                        create_attendance_pdf(
+                            temp_file, filtered_students,
+                            batch_name, subject_meta, batch_info
+                        )
+                        with open(temp_file, 'rb') as pf:
+                            zf.writestr(f"{safe_batch}/{safe_sub}.pdf", pf.read())
+                else:
+                    # ── No debarred list → normal attendance PDF ───────────────
+                    temp_file = f"tmp_deb_{safe_batch}_normal_{ts}.pdf"
+                    temp_pdfs.append(temp_file)
+                    create_attendance_pdf(
+                        temp_file, students, batch_name, dict(base_meta), batch_info
+                    )
+                    with open(temp_file, 'rb') as pf:
+                        zf.writestr(f"{safe_batch}/Attendance_{safe_batch}.pdf", pf.read())
+
+        # ── Cleanup temp PDFs ──────────────────────────────────────────────────
+        for tf in temp_pdfs:
+            try:
+                if os.path.exists(tf):
+                    os.remove(tf)
+            except Exception:
+                pass
+
+        zip_buffer.seek(0)
+        logger.info(f"✅ Debarred attendance ZIP: {len(batches)} batches, "
+                    f"{len(debarred_by_batch)} with debarred lists")
+
+        return send_file(
+            zip_buffer,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=f"Attendance_Debarred_{plan_id}_{ts}.zip"
+        )
+
+    except Exception as e:
+        logger.error(f"❌ export_attendance_debarred error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
 @pdf_bp.route('/test-pdf', methods=['GET'])
 @token_required
 def generate_test_pdf():

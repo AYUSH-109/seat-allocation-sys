@@ -147,39 +147,59 @@ def create_attendance_pdf(filename, student_list, batch_label, metadata, extract
     # Defensive: Ensure students are sorted by roll number
     student_list = sorted(student_list, key=lambda s: s.get('roll_number', ''))
 
+    debarred_row_indices = []  # 1-based table row indices (header = row 0)
+
     for i, student in enumerate(student_list):
         # Truncate long names to prevent column overflow
         student_name = student.get('student_name', '')
         max_name_length = 22
         if len(student_name) > max_name_length:
             student_name = student_name[:max_name_length] + "..."
-        
+
+        is_debarred = student.get('is_debarred', False)
+        table_row_idx = i + 1  # +1 because row 0 is the header
+
+        sig_style = styles['Normal'].clone(f'SigCell_{i}')
+        if is_debarred:
+            sig_style.textColor = colors.red
+            sig_style.fontName  = 'Times-Bold'
+            sig_cell = Paragraph('<b>DEBARRED</b>', sig_style)
+            debarred_row_indices.append(table_row_idx)
+        else:
+            sig_cell = ''
+
         data.append([
             str(i + 1),
             student_name,
             student.get('roll_number', ''),
             student.get('paper_set', ''),
             "DU                           ",
-            ""
+            sig_cell
         ])
 
     col_widths = [1.3*cm, 5.5*cm, 3.6*cm, 2.4*cm, 3.6*cm, 3.1*cm]
     total_table_width = sum(col_widths)
 
+    # Build base table style
+    table_style_cmds = [
+        ('GRID',          (0, 0), (-1, -1), 1, colors.black),
+        ('ALIGN',         (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+        ('FONTSIZE',      (0, 0), (-1, -1), 10),
+        ('FONTNAME',      (0, 0), (-1, -1), 'Times-Roman'),
+        ('FONTNAME',      (0, 0), (-1,  0), 'Times-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1,  0), 3),
+        ('TOPPADDING',    (0, 0), (-1,  0), 3),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 2),
+        ('TOPPADDING',    (0, 1), (-1, -1), 2),
+        ('ALIGN',         (1, 1), (1,  -1), 'LEFT'),
+    ]
+    # Highlight every debarred row with a light red background
+    for dr in debarred_row_indices:
+        table_style_cmds.append(('BACKGROUND', (0, dr), (-1, dr), colors.HexColor('#FFE4E4')))
+
     attendance_table = Table(data, colWidths=col_widths, repeatRows=1)
-    attendance_table.setStyle(TableStyle([
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10), 
-        ('FONTNAME', (0, 0), (-1, -1), 'Times-Roman'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Times-Bold'),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 3),   # header row
-        ('TOPPADDING', (0, 0), (-1, 0), 3),       # header row
-        ('BOTTOMPADDING', (0, 1), (-1, -1), 2),   # data rows — tight to maximise per page
-        ('TOPPADDING', (0, 1), (-1, -1), 2),       # data rows
-        ('ALIGN', (1, 1), (1, -1), 'LEFT'),
-    ]))
+    attendance_table.setStyle(TableStyle(table_style_cmds))
     story.append(attendance_table)
 
     summary_data = [

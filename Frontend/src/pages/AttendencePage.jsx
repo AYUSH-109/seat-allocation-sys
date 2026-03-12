@@ -4,8 +4,14 @@ import { getToken } from '../utils/tokenStorage';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   UserCheck, Eye, X, Loader2,
-  BookOpen, FileDown, Building2, ArrowLeft, Users
+  BookOpen, FileDown, Building2, ArrowLeft, Users,
+  UploadCloud, FileText, CheckCircle, AlertCircle, Archive, ChevronDown
 } from 'lucide-react';
+
+const FORMAT_SLIDES = [
+  { src: '/formats/format1.png', label: 'Format 1 · Rows' },
+  { src: '/formats/format2.png', label: 'Format 2 · Matrix' },
+];
 
 const AttendancePage = ({ showToast }) => {
   const { planId } = useParams();
@@ -24,6 +30,13 @@ const AttendancePage = ({ showToast }) => {
   const [actionLoading, setActionLoading] = useState(null);
   const [previewData, setPreviewData] = useState(null);
   
+  // ── Debarred section state ──────────────────────────────────────────────
+  const [debarredExpanded, setDebarredExpanded] = useState(false);
+  const [debarredFiles, setDebarredFiles] = useState([]); // [{id, file, filename, status, detected_batch, subjects, error}]
+  const [debarredDragging, setDebarredDragging] = useState(false);
+  const [debarredLoading, setDebarredLoading] = useState(false);
+  const [debarredSlide, setDebarredSlide] = useState(0);
+
   const [metadata, setMetadata] = useState({
     // Attendance Settings
     attendance_dept_name: 'Computer Science and Engineering',
@@ -41,6 +54,13 @@ const AttendancePage = ({ showToast }) => {
       fetchBatchData();
     }
   }, [planId, roomFromUrl]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setDebarredSlide(s => (s + 1) % FORMAT_SLIDES.length);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, []);
 
   const fetchBatchData = async () => {
     setLoading(true);
@@ -111,6 +131,113 @@ const AttendancePage = ({ showToast }) => {
       params.set('source', source);
     }
     navigate(`/attendance/${planId}?${params.toString()}`);
+  };
+
+  // ── Debarred helper: call analyze API for a single file ─────────────────
+  const analyzeDebarredFile = async (file, id) => {
+    setDebarredFiles(prev =>
+      prev.map(f => f.id === id ? { ...f, status: 'analyzing' } : f)
+    );
+    try {
+      const token = getToken();
+      const fd = new FormData();
+      fd.append('plan_id', planId);
+      fd.append('room_no', roomName);
+      fd.append('file', file);
+      const res = await fetch('/api/analyze-debarred-file', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: fd,
+      });
+      if (!res.ok) throw new Error('Analysis failed');
+      const result = await res.json();
+      setDebarredFiles(prev =>
+        prev.map(f =>
+          f.id === id
+            ? {
+                ...f,
+                status: 'done',
+                detected_batch: result.detected_batch,
+                subjects: result.subjects || [],
+                batch_total: result.batch_total_students,
+              }
+            : f
+        )
+      );
+    } catch (err) {
+      setDebarredFiles(prev =>
+        prev.map(f => f.id === id ? { ...f, status: 'error', error: err.message } : f)
+      );
+    }
+  };
+
+  const addDebarredFiles = (files) => {
+    const items = Array.from(files).map(file => ({
+      id: `${Date.now()}-${Math.random()}`,
+      file,
+      filename: file.name,
+      status: 'pending',
+      detected_batch: null,
+      subjects: [],
+      error: null,
+    }));
+    setDebarredFiles(prev => {
+      const updated = [...prev, ...items];
+      // Trigger analysis for each new item
+      items.forEach(item => analyzeDebarredFile(item.file, item.id));
+      return updated;
+    });
+  };
+
+  const removeDebarredFile = (id) => {
+    setDebarredFiles(prev => prev.filter(f => f.id !== id));
+  };
+
+  const handleDebarredDrop = (e) => {
+    e.preventDefault();
+    setDebarredDragging(false);
+    if (e.dataTransfer.files.length) addDebarredFiles(e.dataTransfer.files);
+  };
+
+  const handleDebarredDownload = async () => {
+    if (!metadata.course_name || !metadata.course_code) {
+      if (showToast) showToast('Please enter Course Name and Code', 'warning');
+      return;
+    }
+    setDebarredLoading(true);
+    try {
+      const token = getToken();
+      const fd = new FormData();
+      fd.append('plan_id', planId);
+      fd.append('room_no', roomName);
+      fd.append('metadata', JSON.stringify(buildCompleteMetadata()));
+      debarredFiles.forEach(item => {
+        if (item.file) fd.append('debarred_files', item.file);
+      });
+      const res = await fetch('/api/export-attendance-debarred', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: fd,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to generate ZIP');
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Attendance_Debarred_${planId}_${Date.now()}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      if (showToast) showToast('✅ Attendance ZIP downloaded', 'success');
+    } catch (err) {
+      if (showToast) showToast(err.message, 'error');
+    } finally {
+      setDebarredLoading(false);
+    }
   };
 
   // ✅ FIXED: Build complete metadata for API
@@ -458,6 +585,258 @@ const buildCompleteMetadata = () => {
             </div>
           </div>
 
+        </div>
+
+        {/* ─── Attendance with Debarred ───────────────────────────────── */}
+        <div className="bg-white dark:bg-gray-800 rounded-3xl border-2 border-orange-200 dark:border-orange-900/40 shadow-xl overflow-hidden">
+          {/* Collapsible header */}
+          <button
+            onClick={() => setDebarredExpanded(!debarredExpanded)}
+            className="w-full px-8 py-5 flex items-center justify-between hover:bg-orange-50 dark:hover:bg-orange-900/10 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <Archive className="text-orange-500" size={20} />
+              <span className="text-sm font-black text-orange-600 dark:text-orange-400 uppercase tracking-[0.18em]">
+                Attendance with Debarred
+              </span>
+              <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400 uppercase tracking-wider">
+                New
+              </span>
+            </div>
+            <ChevronDown
+              size={18}
+              className={`text-orange-400 transition-transform ${debarredExpanded ? 'rotate-180' : ''}`}
+            />
+          </button>
+
+          {debarredExpanded && (
+            <div className="px-8 pb-8 space-y-6 border-t border-orange-100 dark:border-orange-900/30 pt-6">
+
+              {/* Info banner */}
+              <div className="rounded-l-2xl border border-orange-200 dark:border-orange-900/50 overflow-hidden bg-orange-50 dark:bg-orange-900/20">
+                <div className="flex flex-col md:flex-row md:items-stretch gap-0">
+
+                  {/* LEFT: bullet info */}
+                  <div className="flex-1 px-5 py-5 text-sm text-orange-700 dark:text-orange-300 space-y-3 min-w-0">
+                    <p className="font-black text-[11px] uppercase tracking-[0.18em] text-orange-500">How it works</p>
+                    <ul className="list-disc ml-4 space-y-1.5 text-xs font-medium leading-relaxed">
+                      <li>Upload one <b>CSV / XLSX</b> debarred-list file per batch — all optional.</li>
+                      <li>System <b>auto-detects</b> batch by matching enrollment numbers.</li>
+                      <li>
+                        <b>{Object.keys(batchGroups).length} batch{Object.keys(batchGroups).length !== 1 ? 'es' : ''}</b> in this plan
+                        {Object.keys(batchGroups).length > 0 && <> — upload up to <b>{Object.keys(batchGroups).length}</b> file{Object.keys(batchGroups).length !== 1 ? 's' : ''}.</>}
+                      </li>
+                      <li>N subjects in a file → <b>N separate PDFs</b> for that batch.</li>
+                      <li>Unmatched batches get a <b>normal attendance PDF</b>.</li>
+                      <li>All PDFs bundled into a single <b>.zip</b> download.</li>
+                    </ul>
+
+                  </div>
+
+                  {/* RIGHT: Auto image slider */}
+                  <div
+                    className="relative flex-shrink-0 md:border-l-0 border-t-0 overflow-hidden"
+                    style={{ width: '55%', minWidth: '260px' }}
+                  >
+                    <AnimatePresence mode="wait">
+                      <motion.img
+                        key={debarredSlide}
+                        src={FORMAT_SLIDES[debarredSlide].src}
+                        alt={FORMAT_SLIDES[debarredSlide].label}
+                        className="w-full h-auto select-none block"
+                        draggable={false}
+                        style={{
+                          maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 35%, rgba(0,0,0,0.7) 60%, black 88%)',
+                          WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 35%, rgba(0,0,0,0.7) 60%, black 88%)',
+                        }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.6, ease: 'easeInOut' }}
+                        onError={e => { e.currentTarget.style.opacity = '0'; }}
+                      />
+                    </AnimatePresence>
+
+
+
+                    {/* Dot indicators */}
+                    <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center gap-1.5 z-20">
+                      {FORMAT_SLIDES.map((_, i) => (
+                        <span
+                          key={i}
+                          className={`block w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+                            i === debarredSlide
+                              ? 'bg-orange-500 scale-125'
+                              : 'bg-orange-300 dark:bg-orange-700 opacity-60'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* Drop zone */}
+              <div
+                onDragOver={e => { e.preventDefault(); setDebarredDragging(true); }}
+                onDragLeave={() => setDebarredDragging(false)}
+                onDrop={handleDebarredDrop}
+                className={`relative border-2 border-dashed rounded-2xl p-8 text-center transition-all cursor-pointer ${
+                  debarredDragging
+                    ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20'
+                    : 'border-gray-200 dark:border-gray-600 hover:border-orange-300 dark:hover:border-orange-700'
+                }`}
+                onClick={() => document.getElementById('debarred-file-input').click()}
+              >
+                <input
+                  id="debarred-file-input"
+                  type="file"
+                  accept=".csv,.xlsx,.xls"
+                  multiple
+                  className="hidden"
+                  onChange={e => { if (e.target.files.length) addDebarredFiles(e.target.files); e.target.value = ''; }}
+                />
+                <UploadCloud
+                  size={36}
+                  className={`mx-auto mb-3 transition-colors ${
+                    debarredDragging ? 'text-orange-500' : 'text-gray-300 dark:text-gray-600'
+                  }`}
+                />
+                <p className="font-bold text-sm text-gray-500 dark:text-gray-400">
+                  {debarredDragging ? 'Drop files here…' : 'Drag & drop debarred list files, or click to browse'}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">CSV or Excel (.xlsx) • multiple files allowed</p>
+              </div>
+
+              {/* Uploaded files list */}
+              {debarredFiles.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+                    Uploaded Files ({debarredFiles.length})
+                  </h3>
+                  {debarredFiles.map(item => (
+                    <div
+                      key={item.id}
+                      className="flex items-start gap-3 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
+                    >
+                      {/* Status icon */}
+                      <div className="mt-0.5 flex-shrink-0">
+                        {item.status === 'analyzing' && <Loader2 className="animate-spin text-orange-400" size={18} />}
+                        {item.status === 'done' && item.detected_batch && <CheckCircle className="text-emerald-500" size={18} />}
+                        {item.status === 'done' && !item.detected_batch && <AlertCircle className="text-amber-500" size={18} />}
+                        {item.status === 'error' && <AlertCircle className="text-red-500" size={18} />}
+                        {item.status === 'pending' && <FileText className="text-gray-400" size={18} />}
+                      </div>
+
+                      {/* File info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold dark:text-white truncate">{item.filename}</p>
+                        {item.status === 'analyzing' && (
+                          <p className="text-xs text-gray-400 mt-0.5">Analysing…</p>
+                        )}
+                        {item.status === 'done' && item.detected_batch && (
+                          <div className="mt-1 space-y-1">
+                            <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                              Batch detected: <strong>{item.detected_batch}</strong>
+                              {item.batch_total ? ` (${item.batch_total} students)` : ''}
+                            </p>
+                            {item.subjects.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {item.subjects.map(s => (
+                                  <span
+                                    key={s.code}
+                                    className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400"
+                                  >
+                                    {s.code} — {s.debarred_count} debarred
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {item.status === 'done' && !item.detected_batch && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                            ⚠ Could not match this file to any batch. It will still be sent but may be ignored.
+                          </p>
+                        )}
+                        {item.status === 'error' && (
+                          <p className="text-xs text-red-500 mt-0.5">{item.error}</p>
+                        )}
+                      </div>
+
+                      {/* Remove button */}
+                      <button
+                        onClick={() => removeDebarredFile(item.id)}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex-shrink-0"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Batch coverage summary */}
+              {debarredFiles.length > 0 && Object.keys(batchGroups).length > 0 && (() => {
+                const coveredBatches = new Set(debarredFiles.map(f => f.detected_batch).filter(Boolean));
+                return (
+                  <div className="rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+                    <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900">
+                      <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+                        Batch Coverage
+                      </h3>
+                    </div>
+                    <div className="divide-y dark:divide-gray-700">
+                      {Object.entries(batchGroups).map(([label, data]) => {
+                        const hasList = coveredBatches.has(label);
+                        const matchFile = debarredFiles.find(f => f.detected_batch === label);
+                        return (
+                          <div key={label} className="flex items-center justify-between px-4 py-3">
+                            <div>
+                              <span className="text-sm font-bold dark:text-white">{label}</span>
+                              <span className="ml-2 text-xs text-gray-400">{data?.students?.length || 0} students</span>
+                            </div>
+                            {hasList ? (
+                              <div className="text-right">
+                                <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                  <CheckCircle size={12} /> Debarred list uploaded
+                                </span>
+                                {matchFile && matchFile.subjects.length > 0 && (
+                                  <p className="text-[10px] text-gray-400 mt-0.5">
+                                    {matchFile.subjects.length} subject PDF{matchFile.subjects.length > 1 ? 's' : ''} will be generated
+                                  </p>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-400 italic">Normal attendance PDF</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Generate ZIP button */}
+              <button
+                onClick={handleDebarredDownload}
+                disabled={debarredLoading || !metadata.course_name || !metadata.course_code}
+                className="w-full py-4 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-2xl font-black uppercase tracking-widest text-sm flex items-center justify-center gap-3 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+              >
+                {debarredLoading ? (
+                  <Loader2 className="animate-spin" size={20} />
+                ) : (
+                  <Archive size={20} />
+                )}
+                {debarredLoading
+                  ? 'Generating ZIP…'
+                  : `Generate & Download Attendance ZIP (${Object.keys(batchGroups).length} batch${Object.keys(batchGroups).length !== 1 ? 'es' : ''})`
+                }
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Download All Button */}
