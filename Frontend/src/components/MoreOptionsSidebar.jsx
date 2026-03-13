@@ -1,10 +1,11 @@
 import React from 'react';
-import { FileText, FileSpreadsheet, MoreHorizontal } from 'lucide-react';
+import { FileText, FileSpreadsheet, MoreHorizontal, Upload } from 'lucide-react';
 
 const MoreOptionsSidebar = ({ activeTab, onTabChange }) => {
   const tabs = [
     { id: 'master-plan', label: 'Master Plan', icon: FileText, color: 'text-purple-500' },
     { id: 'excel-export', label: 'Excel Export', icon: FileSpreadsheet, color: 'text-emerald-500' },
+    { id: 'publish-plan', label: 'Publish Plan', icon: Upload, color: 'text-cyan-500' },
   ];
 
   return (
@@ -34,11 +35,7 @@ const MoreOptionsSidebar = ({ activeTab, onTabChange }) => {
       </div>
 
       {/* Future expansion hint */}
-      <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl">
-        <p className="text-xs font-bold text-blue-700 dark:text-blue-300">
-          💡 More options coming soon
-        </p>
-      </div>
+
 
       <style jsx>{`
         .glass-card {

@@ -101,8 +101,17 @@ def build_index() -> dict:
         }
 
         # ── Roll number extraction ─────────────────────────────────────────────
-        # Primary: scan batches → students (same path the extractor uses)
+        # Primary (new schema): scan rooms.<room>.students
         rooms_data = plan.get("rooms", {})
+        for room_data in rooms_data.values():
+            for student in room_data.get("students", []):
+                rn = student.get("roll_number") or student.get("enrollment")
+                if rn:
+                    bucket = roll_index.setdefault(rn, [])
+                    if fname not in bucket:
+                        bucket.append(fname)
+
+        # Legacy: scan batches → students
         for room_data in rooms_data.values():
             for batch_info in room_data.get("batches", {}).values():
                 for student in batch_info.get("students", []):

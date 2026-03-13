@@ -45,19 +45,24 @@ def extract_room_sessions(plan_data: dict) -> list[tuple[str, dict]]:
 
         room_config = room_configs[room_name]
 
-        # Aggregate students from every batch in the room
+        # Aggregate students from the room.
+        # New schema: rooms.<room>.students
+        # Legacy schema: rooms.<room>.batches.<batch>.students
         all_students: list[dict] = []
         batch_info_list: list[dict] = []
 
-        for batch_name, batch_info in room_info.get("batches", {}).items():
-            batch_meta = batch_info.get("info", {})
-            batch_info_list.append({
-                "name":         batch_name,
-                "degree":       batch_meta.get("degree", ""),
-                "branch":       batch_meta.get("branch", ""),
-                "joining_year": batch_meta.get("joining_year", ""),
-            })
-            all_students.extend(batch_info.get("students", []))
+        if isinstance(room_info.get("students"), list):
+            all_students.extend(room_info.get("students", []))
+        else:
+            for batch_name, batch_info in room_info.get("batches", {}).items():
+                batch_meta = batch_info.get("info", {})
+                batch_info_list.append({
+                    "name":         batch_name,
+                    "degree":       batch_meta.get("degree", ""),
+                    "branch":       batch_meta.get("branch", ""),
+                    "joining_year": batch_meta.get("joining_year", ""),
+                })
+                all_students.extend(batch_info.get("students", []))
 
         if not all_students:
             logger.warning(f"SKIP  {room_name}: 0 students")

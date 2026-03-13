@@ -11,6 +11,10 @@ import os
 # ── Paths ────────────────────────────────────────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
+BACKEND_PUBLISHED_DIR = os.environ.get(
+	"BACKEND_PUBLISHED_DIR",
+	os.path.abspath(os.path.join(BASE_DIR, "..", "algo", "published_plans")),
+)
 # PLAN_FILE removed — the system now supports multiple plan files.
 # The summary index (data/summary_index.json) maps roll numbers → filenames.
 

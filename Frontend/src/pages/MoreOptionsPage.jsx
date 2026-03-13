@@ -4,6 +4,7 @@ import { ArrowLeft, Users, Monitor, CheckCircle2, FileText, Loader2, AlertCircle
 import MoreOptionsSidebar from '../components/MoreOptionsSidebar';
 import MasterPlanCard from '../components/MasterPlanCard';
 import ExcelExportCard from '../components/ExcelExportCard';
+import PublishPlanCard from '../components/PublishPlanCard';
 import SplitText from '../components/SplitText';
 import { getToken } from '../utils/tokenStorage';
 
@@ -170,6 +171,16 @@ const MoreOptionsPage = ({ showToast }) => {
                   <h2 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-emerald-700 dark:from-emerald-400 dark:to-emerald-500 bg-clip-text text-transparent">Export to Excel</h2>
                 </div>
                 <ExcelExportCard planId={planId} showToast={showToast} />
+              </div>
+            )}
+
+            {activeTab === 'publish-plan' && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-1 h-8 bg-gradient-to-b from-cyan-500 to-cyan-600 rounded-full"></div>
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-cyan-600 to-cyan-700 dark:from-cyan-400 dark:to-cyan-500 bg-clip-text text-transparent">Publish Plan</h2>
+                </div>
+                <PublishPlanCard planId={planId} showToast={showToast} />
               </div>
             )}
           </div>

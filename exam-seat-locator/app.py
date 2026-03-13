@@ -31,6 +31,7 @@ from werkzeug.utils import secure_filename
 import config
 from core import cache          # pre-loaded singleton — logs now visible
 from core.cleanup import start_cleanup_daemon
+from core.backend_sync import sync_backend_plans
 
 # Start the background cleanup daemon as soon as the process is up.
 # Runs cleanup immediately, then repeats every config.CLEANUP_INTERVAL_DAYS days.
@@ -44,6 +45,11 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.secret_key = config.SECRET_KEY
+
+# Initial sync so newly published backend plans are available immediately.
+sync_stats = sync_backend_plans()
+if sync_stats.get("copied") or sync_stats.get("updated"):
+    cache.reload()
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -167,7 +173,21 @@ def reload_data():
     return redirect(url_for("index"))
 
 
+@app.route("/fetch-backend-plans", methods=["POST"])
+def fetch_backend_plans():
+    """Sync PLAN-*.json from backend publish directory and rebuild indexes."""
+    stats = sync_backend_plans()
+    cache.reload()
+    flash(
+        f"✅ Backend sync done — copied={stats['copied']}, updated={stats['updated']}, "
+        f"skipped={stats['skipped']}. "
+        f"Now indexed {cache.student_count} students across {cache.file_count} plan file(s).",
+        "success",
+    )
+    return redirect(url_for("index"))
+
+
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    app.run(debug=config.DEBUG, host=config.HOST, port=config.PORT)
+    app.run(debug=config.DEBUG, host=config.HOST, port= 5001)
