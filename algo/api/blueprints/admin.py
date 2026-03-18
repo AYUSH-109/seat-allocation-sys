@@ -115,11 +115,16 @@ def update_profile():
 
 @auth_bp.route('/google', methods=['POST'])
 def google_auth():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     token = data.get('token')
     role = data.get('role')  # Optional: provided when user selects role for new account
-    
-    success, user_data, auth_token = google_auth_handler(token, role=role)
+    signup_token = data.get('signup_token')  # Optional: continuation token for role-selection flow
+
+    # For first step, Google token is required. For second step, signup_token may be used.
+    if not token and not signup_token:
+        return jsonify({"status": "error", "message": "Missing Google token"}), 400
+
+    success, user_data, auth_token = google_auth_handler(token, role=role, signup_token=signup_token)
     if success:
         # Check if this is a needs_role response (new user without role selection)
         if isinstance(user_data, dict) and user_data.get('needs_role'):
@@ -128,6 +133,7 @@ def google_auth():
                 "needs_role": True,
                 "email": user_data.get('email'),
                 "full_name": user_data.get('full_name'),
+                "signup_token": user_data.get('signup_token'),
                 "available_roles": VALID_ROLES
             })
         return jsonify({"status": "success", "token": auth_token, "user": user_data})

@@ -85,6 +85,12 @@ const CONSTANTS = {
 const AdminFeedbackPage = ({ showToast }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  const isAdminRole = (role) => {
+    if (!role) return false;
+    const normalized = String(role).trim().toLowerCase();
+    return normalized === 'admin' || normalized === 'developer';
+  };
   
   // State management
   const [feedbacks, setFeedbacks] = useState([]);
@@ -99,7 +105,7 @@ const AdminFeedbackPage = ({ showToast }) => {
 
   // Redirect if not admin
   useEffect(() => {
-    if (user && user.role !== 'ADMIN') {
+    if (user && !isAdminRole(user.role)) {
       showToast('Admin access required', 'error');
       navigate('/dashboard');
     }
@@ -135,19 +141,15 @@ const AdminFeedbackPage = ({ showToast }) => {
     }
   };
 
-  useEffect(() => {
-    fetchAllFeedback();
-  }, []);
-
   // Re-fetch when user changes (account switch)
   const userIdentity = user?.email || user?.id;
   useEffect(() => {
-    if (userIdentity) {
+    if (userIdentity && isAdminRole(user?.role)) {
       setFeedbacks([]);
       setSelectedFeedback(null);
       fetchAllFeedback();
     }
-  }, [userIdentity]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [userIdentity, user?.role]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Calculate stats
   const stats = useMemo(() => {

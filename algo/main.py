@@ -207,6 +207,13 @@ def create_app(test_config=None):
         
         return response
 
+    @app.after_request
+    def add_cross_origin_headers(response):
+        # Needed for Google Identity popup postMessage flow in some browsers.
+        response.headers['Cross-Origin-Opener-Policy'] = 'same-origin-allow-popups'
+        response.headers['Cross-Origin-Embedder-Policy'] = 'unsafe-none'
+        return response
+
     return app
 
 app = create_app()

@@ -6,7 +6,7 @@ import SplitText from '../components/SplitText';
 import { 
   Upload, Layout, Monitor, Clock, ArrowRight, Loader2, AlertCircle, 
   CheckCircle2, Users, Download, Eye, RefreshCw, X, FileText, 
-  BarChart3, Wrench, Building2, FileSpreadsheet, MoreHorizontal
+  BarChart3, Wrench, Building2, FileSpreadsheet, MoreHorizontal, FolderArchive
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -272,6 +272,57 @@ const CreatePlan = ({ showToast }) => {
     }
   };
 
+  // Download hierarchical ZIP (room-wise folders with seating + attendance)
+  const downloadZipHierarchy = async (plan) => {
+    setExportLoading('hierarchy');
+    try {
+      const token = getToken();
+
+      const response = await fetch('/api/generate-pdf/hierarchy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
+        body: JSON.stringify({
+          plan_id: plan.plan_id,
+          metadata: {}
+        })
+      });
+
+      if (!response.ok) {
+        let errorMsg = `HTTP ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMsg = errorData.error || errorMsg;
+        } catch (e) {
+          const errorText = await response.text();
+          errorMsg = errorText || errorMsg;
+        }
+        throw new Error(errorMsg);
+      }
+
+      const blob = await response.blob();
+      if (blob.size === 0) throw new Error('Empty response from server');
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Plan_${plan.plan_id}_${Date.now()}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      if (showToast) showToast('✅ Zip hierarchy downloaded', 'success');
+    } catch (err) {
+      console.error('❌ Zip hierarchy error:', err);
+      if (showToast) showToast(`Failed to download: ${err.message}`, 'error');
+    } finally {
+      setExportLoading(null);
+    }
+  };
+
   // Navigate to Attendance Page with room info
   const goToAttendancePage = (plan, roomName = null) => {
     const params = new URLSearchParams();
@@ -295,8 +346,8 @@ const CreatePlan = ({ showToast }) => {
 
   const actions = [
     {
-      title: 'Allocate Manually',
-      description: 'Create custom seat arrangements',
+      title: 'Smart Allocation',
+      description: 'Auto-generate optimized seat plans',
       icon: Layout,
       color: 'orange',
       bgColor: 'bg-orange-500 dark:bg-orange-600',
@@ -858,6 +909,18 @@ const CreatePlan = ({ showToast }) => {
 
                   {/* Close button */}
                 <div className="border-t border-gray-200 dark:border-gray-700 pt-6 space-y-3">
+                  <button
+                    onClick={() => downloadZipHierarchy(planDetails)}
+                    disabled={exportLoading === 'hierarchy'}
+                    className="w-full px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-purple-500/25 disabled:opacity-50"
+                  >
+                    {exportLoading === 'hierarchy' ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <FolderArchive size={18} />
+                    )}
+                    {exportLoading === 'hierarchy' ? 'Generating...' : 'Zip Hierarchy'}
+                  </button>
                   <button
                     onClick={() => navigate(`/more-options/${planDetails.plan_id}`)}
                     className="w-full px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-orange-500/25"

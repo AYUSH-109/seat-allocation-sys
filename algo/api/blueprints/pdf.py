@@ -108,9 +108,6 @@ def get_seating_from_cache(plan_id, room_no=None):
 # ============================================================================
 # HELPER: Get seating from Database (Fallback)
 # ============================================================================
-# ============================================================================
-# HELPER: Get seating from Database (Fallback)
-# ============================================================================
 def get_seating_from_database(session_id, room_name=None):
     """Reconstruct seating data from database allocations"""
     try:
@@ -409,54 +406,6 @@ def get_plan_batches(plan_id):
     except Exception as e:
         logger.error(f"Error fetching plan batches: {e}")
         return jsonify({"error": str(e)}), 500
-        import sqlite3
-        
-        conn = get_db_connection()
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-        
-        # Get session info - filter by user_id
-        cur.execute("SELECT session_id, total_students FROM allocation_sessions WHERE plan_id = ? AND user_id = ?", (plan_id, request.user_id))
-        session_row = cur.fetchone()
-        
-        if not session_row:
-            conn.close()
-            return jsonify({"error": "Plan not found in cache or database"}), 404
-            
-        session_id = session_row['session_id']
-        total_students = session_row['total_students']
-        
-        # Get batches linked to this session
-        cur.execute("""
-            SELECT DISTINCT batch_name, batch_color 
-            FROM uploads 
-            WHERE session_id = ?
-        """, (session_id,))
-        
-        batches = []
-        for b in cur.fetchall():
-            batches.append({
-                "name": b['batch_name'],
-                "color": b['batch_color'] or "#3b82f6"
-            })
-            
-        conn.close()
-        
-        return jsonify({
-            "plan_id": plan_id,
-            "rooms": {}, # No rooms yet if no cache
-            "metadata": {
-                "plan_id": plan_id,
-                "total_students": total_students,
-                "batches": batches
-            },
-            "inputs": {},
-            "source": "database"
-        })
-        
-    except Exception as e:
-        logger.error(f"Get plan batches error: {e}")
-        return jsonify({"error": str(e)}), 500
 
 # ============================================================================
 # POST /api/generate-pdf/batch - Batch PDF generation
@@ -542,6 +491,189 @@ def generate_pdf_batch():
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ============================================================================
+# POST /api/generate-pdf/hierarchy - Hierarchical ZIP with room folders
+# ============================================================================
+
+def _dedup_sort_students(students):
+    """Deduplicate by roll_number and sort."""
+    seen = set()
+    unique = []
+    for s in students:
+        r = s.get('roll_number')
+        if r and r not in seen:
+            seen.add(r)
+            unique.append(s)
+    return sorted(unique, key=lambda s: s.get('roll_number', ''))
+
+
+def _build_att_metadata(frontend_metadata, room_name):
+    """Build attendance metadata dict from frontend metadata."""
+    return {
+        'exam_title': frontend_metadata.get('exam_title', 'EXAMINATION-ATTENDANCE SHEET'),
+        'course_name': frontend_metadata.get('course_name', 'N/A'),
+        'course_code': frontend_metadata.get('course_code', 'N/A'),
+        'date': frontend_metadata.get('date', ''),
+        'time': frontend_metadata.get('time', ''),
+        'year': frontend_metadata.get('year', str(datetime.now().year)),
+        'room_no': room_name,
+        'attendance_dept_name': frontend_metadata.get('attendance_dept_name', 'Computer Science and Engineering'),
+        'attendance_year': frontend_metadata.get('attendance_year', datetime.now().year),
+        'attendance_exam_heading': frontend_metadata.get('attendance_exam_heading', 'SESSIONAL EXAMINATION'),
+        'attendance_banner_path': frontend_metadata.get('attendance_banner_path', ''),
+    }
+
+
+@pdf_bp.route('/generate-pdf/hierarchy', methods=['POST'])
+@token_required
+def generate_pdf_hierarchy():
+    """Generate a hierarchical ZIP: Rooms/{name}/Plan_PDF + Attendance_PDF/{branch}, plus Master_Plan."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+
+        plan_id = data.get('plan_id')
+        if not plan_id:
+            return jsonify({"error": "plan_id required"}), 400
+
+        if not _verify_plan_ownership(plan_id, request.user_id):
+            return jsonify({"error": "Access denied"}), 403
+
+        cache_data = CACHE_MGR.load_snapshot(plan_id)
+        if not cache_data:
+            return jsonify({"error": "Plan not found"}), 404
+
+        room_names = list(cache_data.get('rooms', {}).keys())
+        if not room_names:
+            return jsonify({"error": "No rooms available in plan"}), 400
+
+        import zipfile
+        import io as _io
+        import time
+        from algo.pdf_gen.pdf_generation import generate_seating_pdf_to_buffer
+        from algo.attendence_gen.attend_gen import create_attendance_pdf
+
+        frontend_metadata = data.get('metadata', {})
+        zip_buffer = _io.BytesIO()
+        generated_rooms = []
+        errors = []
+        root = f"Plan_{plan_id}"
+
+        with zipfile.ZipFile(zip_buffer, mode='w', compression=zipfile.ZIP_DEFLATED) as zf:
+            for room_name in room_names:
+                safe_room = room_name.replace(' ', '_').replace('/', '-')
+                room_dir = f"{root}/Rooms/{safe_room}"
+
+                room_payload, _ = get_seating_data_hybrid({**data, 'room_name': room_name})
+                if not room_payload:
+                    errors.append(f"Room '{room_name}': data not found")
+                    continue
+
+                # 1) Seating Plan PDF
+                try:
+                    pdf_buf = generate_seating_pdf_to_buffer(
+                        data=room_payload,
+                        user_id=str(request.user_id),
+                        template_name=data.get('template_name', 'default')
+                    )
+                    zf.writestr(f"{room_dir}/Plan_PDF/Seating_Plan.pdf", pdf_buf.read())
+                except Exception as e:
+                    errors.append(f"Room '{room_name}' seating: {e}")
+
+                # 2) Branch-wise Attendance PDFs
+                target_room = room_payload.get('metadata', {}).get('room_no') or room_name
+                batches = room_payload.get('batches', {})
+
+                for batch_key, batch_data in batches.items():
+                    try:
+                        students = _dedup_sort_students(batch_data.get('students', []))
+                        if not students:
+                            continue
+
+                        safe_batch = batch_key.replace(' ', '_').replace('/', '-')
+                        ts = int(time.time())
+                        temp_file = f"temp_att_{safe_room}_{safe_batch}_{ts}.pdf"
+                        try:
+                            create_attendance_pdf(
+                                temp_file, students, batch_key,
+                                _build_att_metadata(frontend_metadata, target_room),
+                                batch_data.get('info', {})
+                            )
+                            with open(temp_file, 'rb') as f:
+                                zf.writestr(f"{room_dir}/Attendance_PDF/{safe_batch}/Attendance_Sheet.pdf", f.read())
+                        finally:
+                            if os.path.exists(temp_file):
+                                os.remove(temp_file)
+                    except Exception as e:
+                        errors.append(f"Room '{room_name}' attendance ({batch_key}): {e}")
+
+                # Fallback: no batches dict — extract from seating matrix
+                if not batches and 'seating' in room_payload:
+                    try:
+                        students = []
+                        for row in (room_payload.get('seating') or []):
+                            if isinstance(row, list):
+                                for seat in row:
+                                    if seat and not seat.get('is_broken') and not seat.get('is_unallocated'):
+                                        students.append(seat)
+                        students = _dedup_sort_students(students)
+                        if students:
+                            ts = int(time.time())
+                            temp_file = f"temp_att_{safe_room}_all_{ts}.pdf"
+                            try:
+                                create_attendance_pdf(
+                                    temp_file, students, room_name,
+                                    _build_att_metadata(frontend_metadata, target_room), {}
+                                )
+                                with open(temp_file, 'rb') as f:
+                                    zf.writestr(f"{room_dir}/Attendance_PDF/All/Attendance_Sheet.pdf", f.read())
+                            finally:
+                                if os.path.exists(temp_file):
+                                    os.remove(temp_file)
+                    except Exception as e:
+                        errors.append(f"Room '{room_name}' matrix attendance: {e}")
+
+                generated_rooms.append(room_name)
+
+            # Master Plan (same generator as More Options page)
+            try:
+                from algo.api.blueprints.master_plan_pdf import _build_master_plan_pdf
+                master_buf = _build_master_plan_pdf(
+                    snapshot=cache_data,
+                    user_id=str(request.user_id),
+                    dept_name=data.get('dept_name', 'Department of Computer Science & Engineering'),
+                    exam_name=data.get('exam_name', 'Examination'),
+                    date_text=data.get('date_text', ''),
+                    title=data.get('title', 'Master Seating Plan'),
+                    left_sign_name=data.get('left_sign_name', ''),
+                    left_sign_title=data.get('left_sign_title', ''),
+                    right_sign_name=data.get('right_sign_name', ''),
+                    right_sign_title=data.get('right_sign_title', ''),
+                )
+                zf.writestr(f"{root}/Master_Plan/Master_Plan.pdf", master_buf.read())
+            except Exception as e:
+                errors.append(f"Master plan: {e}")
+
+        if not generated_rooms:
+            return jsonify({"error": "No PDFs could be generated", "errors": errors}), 500
+
+        zip_buffer.seek(0)
+        logger.info(f"✅ [Hierarchy ZIP] {len(generated_rooms)} rooms, {len(errors)} errors")
+
+        return send_file(
+            zip_buffer,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=f"Plan_{plan_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
+        )
+
+    except Exception as e:
+        logger.error(f"❌ Hierarchy ZIP error: {e}")
+        return jsonify({"error": str(e)}), 500
+
 
 # ============================================================================
 # Download PDF endpoint

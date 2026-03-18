@@ -3,6 +3,7 @@
 import sqlite3
 import os
 import secrets
+import time
 from datetime import datetime, timedelta, timezone
 import jwt
 import bcrypt
@@ -39,7 +40,9 @@ if os.getenv('FLASK_ENV') == 'production' and JWT_SECRET_KEY == "dev-stable-secr
 # ============================================================================
 # ROLE DEFINITIONS
 # ============================================================================
-VALID_ROLES = ['developer', 'admin', 'faculty']
+# Roles must match the users table CHECK constraint in schema.py
+VALID_ROLES = ['developer', 'admin', 'faculty', 'STUDENT', 'ADMIN', 'TEACHER', 'FACULTY']
+VALID_ROLES_LOWERCASE = ['developer', 'admin', 'faculty']
 DEFAULT_ROLE = 'faculty'
 
 def _get_conn():
@@ -54,6 +57,40 @@ def _get_conn():
 ADMIN_EMAILS = [
     # Add admin emails here — they will be auto-assigned 'developer' role on Google signup
 ]
+
+# Temporary cache for role-selection continuation in Google signup flow.
+# Key: signup_token, Value: {'google_id', 'email', 'full_name', 'expires_at'}
+PENDING_GOOGLE_SIGNUPS = {}
+PENDING_GOOGLE_SIGNUP_TTL_SECONDS = 15 * 60
+
+
+def _cleanup_pending_google_signups() -> None:
+    now = time.time()
+    expired = [k for k, v in PENDING_GOOGLE_SIGNUPS.items() if v.get('expires_at', 0) <= now]
+    for key in expired:
+        PENDING_GOOGLE_SIGNUPS.pop(key, None)
+
+
+def _create_pending_google_signup(*, google_id: str, email: str, full_name: str) -> str:
+    _cleanup_pending_google_signups()
+    signup_token = secrets.token_urlsafe(32)
+    PENDING_GOOGLE_SIGNUPS[signup_token] = {
+        'google_id': google_id,
+        'email': email,
+        'full_name': full_name,
+        'expires_at': time.time() + PENDING_GOOGLE_SIGNUP_TTL_SECONDS,
+    }
+    return signup_token
+
+
+def _consume_pending_google_signup(signup_token: str) -> Optional[Dict]:
+    _cleanup_pending_google_signups()
+    payload = PENDING_GOOGLE_SIGNUPS.pop(signup_token, None)
+    if not payload:
+        return None
+    if payload.get('expires_at', 0) <= time.time():
+        return None
+    return payload
 
 def token_required(f):
     """Decorator to require valid JWT token"""
@@ -75,10 +112,17 @@ def token_required(f):
             payload = verify_token(token)
             if not payload:
                 return jsonify({'message': 'Token is invalid or expired!'}), 401
-            
+
+            user_id = payload.get('user_id')
+            token_role = payload.get('role')
+
+            # Prefer live role from DB so role changes apply immediately.
+            db_user = get_user_by_id(user_id) if user_id else None
+            resolved_role = _normalize_role(db_user.get('role')) if db_user else _normalize_role(token_role)
+
             # Set user info on request object
-            request.user_id = payload.get('user_id')
-            request.user_role = payload.get('role')
+            request.user_id = user_id
+            request.user_role = resolved_role
         except Exception as e:
             return jsonify({'message': f'Error verifying token: {str(e)}'}), 401
             
@@ -248,10 +292,10 @@ def signup(username: str, email: str, password: str, role: str = "faculty") -> T
     if not username or not email or not password:
         return False, "All fields are required.", ""
     
-    # Validate role
+    # Validate and normalize role to lowercase
     selected_role = role.lower() if role else DEFAULT_ROLE
-    if selected_role not in VALID_ROLES:
-        return False, f"Invalid role. Must be one of: {', '.join(VALID_ROLES)}", ""
+    if selected_role not in VALID_ROLES_LOWERCASE:
+        return False, f"Invalid role. Must be one of: {', '.join(VALID_ROLES_LOWERCASE)}", ""
     
     if get_user_by_email(email):
         return False, "User with this email already exists.", ""
@@ -260,6 +304,10 @@ def signup(username: str, email: str, password: str, role: str = "faculty") -> T
     
     try:
         conn = _get_conn()
+        # Ensure database is not locked
+        conn.execute("PRAGMA busy_timeout=20000")
+        conn.execute("PRAGMA journal_mode=WAL")
+        
         cursor = conn.execute(
             """INSERT INTO users 
                (username, email, password_hash, role, auth_provider) 
@@ -356,7 +404,7 @@ def update_user_profile(user_id: int, username: str = None, email: str = None) -
 # GOOGLE OAUTH (WITH ADMIN ROLE SUPPORT)
 # ============================================================================
 
-def google_auth_handler(token: str, role: str = None) -> Tuple[bool, Optional[Dict], str]:
+def google_auth_handler(token: str, role: str = None, signup_token: str = None) -> Tuple[bool, Optional[Dict], str]:
     """
     Handle Google OAuth token verification and user creation/update.
     - Existing users: log in with their stored role (role param ignored).
@@ -369,17 +417,33 @@ def google_auth_handler(token: str, role: str = None) -> Tuple[bool, Optional[Di
     if not GOOGLE_CLIENT_ID:
         return False, "Google Client ID not configured", ""
     
+    # Normalize role to lowercase for consistency
+    if role:
+        role = role.lower()
+    
     try:
-        # Verify Google token
-        idinfo = id_token.verify_oauth2_token(token, requests.Request(), GOOGLE_CLIENT_ID)
-        
-        google_id = idinfo.get('sub')
-        email = idinfo.get('email')
-        full_name = idinfo.get('name', '')
-        picture = idinfo.get('picture')
-        
-        if not google_id or not email:
-            return False, "Invalid Google token", ""
+        google_id = None
+        email = None
+        full_name = ''
+
+        # Continue signup using server-issued pending token when role is chosen.
+        if signup_token and role in VALID_ROLES_LOWERCASE:
+            pending = _consume_pending_google_signup(signup_token)
+            if not pending:
+                return False, "Signup session expired. Please sign in with Google again.", ""
+            google_id = pending.get('google_id')
+            email = pending.get('email')
+            full_name = pending.get('full_name', '')
+        else:
+            # Verify Google token
+            idinfo = id_token.verify_oauth2_token(token, requests.Request(), GOOGLE_CLIENT_ID)
+
+            google_id = idinfo.get('sub')
+            email = idinfo.get('email')
+            full_name = idinfo.get('name', '')
+
+            if not google_id or not email:
+                return False, "Invalid Google token", ""
         
         # Check if user exists by email
         existing_user = get_user_by_email(email)
@@ -441,11 +505,17 @@ def google_auth_handler(token: str, role: str = None) -> Tuple[bool, Optional[Di
             
             # If no role provided, tell frontend to ask
             if not role or role not in VALID_ROLES:
+                pending_signup_token = _create_pending_google_signup(
+                    google_id=google_id,
+                    email=email,
+                    full_name=full_name,
+                )
                 return True, {
                     "needs_role": True,
                     "email": email,
                     "full_name": full_name,
                     "google_id": google_id,
+                    "signup_token": pending_signup_token,
                 }, ""
             
             # Create new user with selected role

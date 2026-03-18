@@ -3,6 +3,7 @@
 import sqlite3
 import logging
 import sys
+from pathlib import Path
 from algo.config.settings import Config
 
 logger = logging.getLogger(__name__)
@@ -15,9 +16,29 @@ def ensure_demo_db():
     This function is idempotent - safe to run multiple times.
     """
     logger.info("🔧 Initializing database...")
+
+    # Guard against accidental secondary DB creation inside algo/.
+    # The canonical DB path is Config.DB_PATH (repo root/demo.db).
+    root_dir = Path(Config.DB_PATH).parent
+    stray_db = root_dir / "algo" / Path(Config.DB_PATH).name
+    if stray_db.exists() and stray_db.resolve() != Path(Config.DB_PATH).resolve():
+        try:
+            if stray_db.stat().st_size == 0:
+                stray_db.unlink()
+                logger.info(f"🧹 Removed stray empty DB file: {stray_db}")
+            else:
+                logger.warning(
+                    "⚠️ Found non-empty stray DB at %s. Keeping it untouched; app will continue using %s",
+                    stray_db,
+                    Config.DB_PATH,
+                )
+        except Exception as cleanup_err:
+            logger.warning(f"⚠️ Could not inspect/remove stray DB {stray_db}: {cleanup_err}")
     
-    conn = sqlite3.connect(Config.DB_PATH)
+    conn = sqlite3.connect(Config.DB_PATH, timeout=20)
     cur = conn.cursor()
+    cur.execute("PRAGMA journal_mode=WAL")
+    cur.execute("PRAGMA busy_timeout=20000")
 
     try:
         # ====================================================================
@@ -148,6 +169,53 @@ def ensure_demo_db():
         # ====================================================================
         # 2. USERS TABLE (UNIFIED - auth + domain in one table)
         # ====================================================================
+        # Check if users table exists with old constraint (uppercase-only roles)
+        cur.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'")
+        users_table_result = cur.fetchone()
+        users_table_sql = users_table_result[0] if users_table_result else None
+        
+        has_old_constraint = (
+            users_table_sql and 
+            "CHECK(role IN ('STUDENT', 'ADMIN', 'TEACHER', 'FACULTY'))" in str(users_table_sql)
+        )
+        
+        if has_old_constraint:
+            logger.info("🔧 Detected old users table with uppercase-only role constraint. Rebuilding...")
+            try:
+                cur.executescript("""
+                    PRAGMA foreign_keys = OFF;
+                    CREATE TABLE users_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        username TEXT NOT NULL,
+                        email TEXT UNIQUE NOT NULL,
+                        password_hash TEXT,
+                        role TEXT NOT NULL DEFAULT 'faculty' CHECK(role IN ('developer', 'admin', 'faculty', 'STUDENT', 'ADMIN', 'TEACHER', 'FACULTY')),
+                        full_name TEXT,
+                        auth_provider TEXT DEFAULT 'local',
+                        google_id TEXT,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        last_login DATETIME
+                    );
+                    INSERT INTO users_new SELECT * FROM users;
+                    DROP TABLE users;
+                    ALTER TABLE users_new RENAME TO users;
+                    PRAGMA foreign_keys = ON;
+                """)
+                logger.info("✅ Users table successfully migrated with new role constraint.")
+            except Exception as migration_err:
+                logger.warning(f"⚠️  Migration failed: {migration_err}. Dropping and recreating users table...")
+                try:
+                    cur.executescript("""
+                        PRAGMA foreign_keys = OFF;
+                        DROP TABLE IF EXISTS users;
+                        PRAGMA foreign_keys = ON;
+                    """)
+                    # Will be recreated below in the CREATE TABLE IF NOT EXISTS
+                except Exception as drop_err:
+                    logger.error(f"❌ Failed to drop users table: {drop_err}")
+        
+        # Create table with correct constraint (if not already done)
         cur.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

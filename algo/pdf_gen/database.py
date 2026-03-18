@@ -10,8 +10,10 @@ def init_database():
     # Ensure directory exists
     os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
     
-    conn = sqlite3.connect(DATABASE_PATH)
+    conn = sqlite3.connect(DATABASE_PATH, timeout=20)
     cursor = conn.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA busy_timeout=20000")
     
     # Create user_templates table
     cursor.execute('''

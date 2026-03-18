@@ -131,8 +131,8 @@ def get_all_feedback_admin():
     """
     try:
         user_role = getattr(request, 'user_role', None)
-        
-        if user_role != 'ADMIN':
+
+        if user_role not in ('admin', 'developer', 'ADMIN'):
             return jsonify({"error": "Admin access required"}), 403
         
         conn = get_db_connection()

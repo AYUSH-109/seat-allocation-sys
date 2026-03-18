@@ -1,0 +1,28 @@
+name = "seat-plan-sync-worker"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+
+# ── R2 bucket binding ─────────────────────────────────────────────────────────
+# Create the bucket first:  wrangler r2 bucket create exam-seat-plans
+[[r2_buckets]]
+binding     = "PLANS_BUCKET"
+bucket_name = "exam-seat-plans"
+
+# ── Non-sensitive vars (add to [vars] or use `wrangler secret put`) ───────────
+# Sensitive keys (ALLOCATOR_SECRET, LOCATOR_SECRET) MUST be set as Wrangler
+# secrets, not here.  Run:
+#   wrangler secret put ALLOCATOR_SECRET
+#   wrangler secret put LOCATOR_SECRET
+#
+# SEAT_LOCATOR_URL is not sensitive — safe to put here or in the dashboard.
+[vars]
+SEAT_LOCATOR_URL = "https://exam-seat-locator.onrender.com"
+
+# ── Preview / local dev overrides ────────────────────────────────────────────
+[env.dev]
+name = "seat-plan-sync-worker-dev"
+vars = { SEAT_LOCATOR_URL = "http://localhost:5001" }
+
+[[env.dev.r2_buckets]]
+binding     = "PLANS_BUCKET"
+bucket_name = "exam-seat-plans-dev"

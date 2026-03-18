@@ -88,6 +88,7 @@ const GoogleLoginComponent = ({ showToast, onNeedsRole }) => {
               google_token: response.credential,
               email: result.email,
               full_name: result.full_name,
+              signup_token: result.signup_token,
             });
           } else {
             // Fallback: navigate to signup with Google data
@@ -97,6 +98,7 @@ const GoogleLoginComponent = ({ showToast, onNeedsRole }) => {
                   google_token: response.credential,
                   email: result.email,
                   full_name: result.full_name,
+                  signup_token: result.signup_token,
                 }
               }
             });

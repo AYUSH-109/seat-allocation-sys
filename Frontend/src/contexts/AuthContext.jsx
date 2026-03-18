@@ -81,10 +81,11 @@ export const AuthProvider = ({ children }) => {
   // ============================================================================
   // Google OAuth Login
   // ============================================================================
-  const googleLogin = async (googleToken, role = null) => {
+  const googleLogin = async (googleToken, role = null, signupToken = null) => {
     try {
       const body = { token: googleToken };
       if (role) body.role = role;
+      if (signupToken) body.signup_token = signupToken;
 
       const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
         method: 'POST',
@@ -115,6 +116,7 @@ export const AuthProvider = ({ children }) => {
           needs_role: true,
           email: data.email,
           full_name: data.full_name,
+          signup_token: data.signup_token,
           available_roles: data.available_roles,
         };
       }

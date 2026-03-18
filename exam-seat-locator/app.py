@@ -13,6 +13,7 @@ the pre-built AppCache that was loaded once at process startup.
 
 import os
 import logging
+from datetime import date, timedelta
 
 # ── Logging MUST be configured before any other import that logs ─────────────
 _handler = logging.StreamHandler()
@@ -25,13 +26,15 @@ logging.getLogger().addHandler(_handler)
 logging.getLogger("werkzeug").setLevel(logging.INFO)
 # ─────────────────────────────────────────────────────────────────────────────
 
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from werkzeug.utils import secure_filename
 
 import config
 from core import cache          # pre-loaded singleton — logs now visible
 from core.cleanup import start_cleanup_daemon
 from core.backend_sync import sync_backend_plans
+from core.cloud_sync import start_sync_worker, verify_signature, enqueue_notification
+from core.sync_queue import stats as sync_queue_stats
 
 # Start the background cleanup daemon as soon as the process is up.
 # Runs cleanup immediately, then repeats every config.CLEANUP_INTERVAL_DAYS days.
@@ -46,19 +49,32 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.secret_key = config.SECRET_KEY
 
+
+def _next_three_dates() -> list[str]:
+    """Return [today, tomorrow, day-after-tomorrow] in YYYY-MM-DD format."""
+    today = date.today()
+    return [
+        (today + timedelta(days=offset)).strftime("%Y-%m-%d")
+        for offset in range(3)
+    ]
+
 # Initial sync so newly published backend plans are available immediately.
 sync_stats = sync_backend_plans()
 if sync_stats.get("copied") or sync_stats.get("updated"):
     cache.reload()
+
+# Start async notification consumer worker
+start_sync_worker(cache)
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @app.route("/", methods=["GET"])
 def index():
+    date_options = _next_three_dates()
     return render_template(
         "index.html",
-        dates=cache.unique_dates,
+        dates=date_options,
         time_slots=cache.unique_time_slots,
         file_count=cache.file_count,
         student_count=cache.student_count,
@@ -185,6 +201,34 @@ def fetch_backend_plans():
         "success",
     )
     return redirect(url_for("index"))
+
+
+@app.route("/api/sync/notify", methods=["POST"])
+def sync_notify():
+    """Receive signed cloud notification and enqueue for async processing."""
+    raw = request.get_data(cache=False)
+    sig = request.headers.get("X-Signature")
+    if not verify_signature(raw, sig):
+        return jsonify({"accepted": False, "error": "invalid signature"}), 401
+
+    payload = request.get_json(silent=True) or {}
+    ok, state = enqueue_notification(payload)
+    if not ok:
+        return jsonify({"accepted": False, "error": state}), 400
+
+    code = 200 if state == "duplicate" else 202
+    return jsonify({
+        "accepted": True,
+        "state": state,
+        "event_id": payload.get("event_id"),
+        "plan_id": payload.get("plan_id"),
+    }), code
+
+
+@app.route("/api/sync/stats", methods=["GET"])
+def sync_stats_endpoint():
+    """Queue stats for operational visibility."""
+    return jsonify({"queue": sync_queue_stats()})
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────

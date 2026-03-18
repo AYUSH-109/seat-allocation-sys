@@ -54,6 +54,7 @@ from datetime import datetime
 from flask import Blueprint, request, jsonify
 from algo.services.auth_service import token_required
 from algo.core.cache.cache_manager import CacheManager
+from algo.services.cloud_sync_service import CloudSyncService
 
 logger = logging.getLogger(__name__)
 
@@ -206,13 +207,21 @@ def publish_plan(plan_id: str):
         logger.error(f"Transform failed for {plan_id}: {exc}", exc_info=True)
         return jsonify({"success": False, "error": f"Transform error: {exc}"}), 500
 
-    # ── upload to fake bucket ─────────────────────────────────────────────────
+    # ── upload to local bucket mirror (for local/dev workflows) ─────────────
     filename = f"{plan_id}.json"
     try:
         object_uri = _fake_bucket_upload(filename, transformed)
     except Exception as exc:
         logger.error(f"Bucket upload failed for {plan_id}: {exc}", exc_info=True)
         return jsonify({"success": False, "error": f"Upload error: {exc}"}), 500
+
+    # ── notify cloud ingress (queue producer path) ───────────────────────────
+    sync_result = CloudSyncService.push_plan(
+        plan_id=plan_id,
+        transformed_payload=transformed,
+        date=date,
+        time_slot=time_slot,
+    )
 
     total_students = transformed["metadata"]["total_students"]
     rooms = list(transformed["rooms"].keys())
@@ -231,5 +240,6 @@ def publish_plan(plan_id: str):
         "time_slot":      time_slot,
         "total_students": total_students,
         "rooms":          rooms,
+        "cloud_sync":     sync_result,
         "message":        f"Plan published with {total_students} students across {len(rooms)} room(s).",
     })

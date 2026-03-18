@@ -117,7 +117,11 @@ const SignupPage = ({ showToast }) => {
   const handleGoogleComplete = async () => {
     setLoading(true);
     try {
-      const result = await googleLogin(googleData.google_token, selectedRole);
+      const result = await googleLogin(
+        googleData.google_token,
+        selectedRole,
+        googleData.signup_token
+      );
 
       if (result.success && !result.needs_role) {
         showToast('Account created successfully!', 'success');

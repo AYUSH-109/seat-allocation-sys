@@ -30,8 +30,10 @@ class TemplateManager:
         """Get database connection with proper setup"""
         # Ensure directory exists to prevent connection errors
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=20)
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=20000")
         return conn
     
     def _get_default_template(self):

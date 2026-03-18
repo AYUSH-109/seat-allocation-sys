@@ -12,6 +12,7 @@ def get_db():
     if 'db' not in g:
         g.db = sqlite3.connect(Config.DB_PATH, timeout=20)
         g.db.row_factory = sqlite3.Row
+        g.db.execute("PRAGMA journal_mode=WAL")
     return g.db
 
 def close_db(e=None):
@@ -24,6 +25,7 @@ def get_db_connection_standalone():
     """Get a standalone database connection (for scripts/outside context)"""
     conn = sqlite3.connect(Config.DB_PATH, timeout=20)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
     return conn
 
 get_db_connection = get_db_connection_standalone
