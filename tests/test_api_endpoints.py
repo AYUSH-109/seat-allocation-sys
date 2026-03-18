@@ -259,6 +259,13 @@ class TestTemplatesEndpoint:
                           headers=_auth_header(user_a["token"]))
         assert resp.status_code == 200
 
+    def test_download_mode1_template(self, client, user_a):
+        """GET /api/templates/download/students_mode1.csv returns sample CSV."""
+        resp = client.get("/api/templates/download/students_mode1.csv",
+                          headers=_auth_header(user_a["token"]))
+        assert resp.status_code == 200
+        assert b"Enrollment" in resp.data
+
 
 # ============================================================================
 # FEEDBACK

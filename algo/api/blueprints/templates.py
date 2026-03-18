@@ -1,19 +1,71 @@
 # Template download endpoints.
 # Serves sample CSV templates for file upload format guidance.
+import logging
 import os
 from flask import Blueprint, send_from_directory, jsonify, Response, current_app
 
 templates_bp = Blueprint('templates', __name__, url_prefix='/api/templates')
+logger = logging.getLogger(__name__)
 
-# Path to the templates directory - Calculate from algo root
+
+ALLOWED_TEMPLATE_FILES = ['students_mode1.csv', 'students_mode2.csv', 'CSE_Batch_10.csv']
+
+DEFAULT_TEMPLATE_CONTENT = {
+    'students_mode1.csv': (
+        'Enrollment\n'
+        'BTCS2501001\n'
+        'BTCS2501002\n'
+        'BTCS2501003\n'
+    ),
+    'students_mode2.csv': (
+        'Name,Enrollment,Department\n'
+        'Rahul Sharma,BTCS2501001,Computer Science\n'
+        'Priya Patel,BTCS2501002,Computer Science\n'
+        'Aman Verma,BIT2501003,Information Technology\n'
+    ),
+    'CSE_Batch_10.csv': (
+        'Name,Enrollment,Department\n'
+        'Student 01,BTCS2501001,Computer Science\n'
+        'Student 02,BTCS2501002,Computer Science\n'
+        'Student 03,BTCS2501003,Computer Science\n'
+        'Student 04,BTCS2501004,Computer Science\n'
+        'Student 05,BTCS2501005,Computer Science\n'
+        'Student 06,BTCS2501006,Computer Science\n'
+        'Student 07,BTCS2501007,Computer Science\n'
+        'Student 08,BTCS2501008,Computer Science\n'
+        'Student 09,BTCS2501009,Computer Science\n'
+        'Student 10,BTCS2501010,Computer Science\n'
+    ),
+}
+
 def get_templates_dir():
     """Get absolute path to templates directory"""
     # Start from this file's location: algo/api/blueprints/templates.py
-    # Go up to algo/, then to static/templates
+    # Prefer algo/static/templates, fallback to project-root static/templates.
     this_dir = os.path.dirname(os.path.abspath(__file__))
-    algo_dir = os.path.dirname(os.path.dirname(this_dir))  # Go up twice to algo/
-    templates_dir = os.path.join(algo_dir, 'static', 'templates')
-    return templates_dir
+    algo_dir = os.path.dirname(os.path.dirname(this_dir))
+    project_root = os.path.dirname(algo_dir)
+
+    candidates = [
+        os.path.join(algo_dir, 'static', 'templates'),
+        os.path.join(project_root, 'static', 'templates'),
+    ]
+
+    for path in candidates:
+        if os.path.isdir(path):
+            return path
+    return candidates[0]
+
+
+def ensure_default_templates(templates_dir):
+    """Create template directory and seed default template files if missing."""
+    os.makedirs(templates_dir, exist_ok=True)
+    for filename, content in DEFAULT_TEMPLATE_CONTENT.items():
+        file_path = os.path.join(templates_dir, filename)
+        if not os.path.exists(file_path):
+            with open(file_path, 'w', encoding='utf-8', newline='') as file_obj:
+                file_obj.write(content)
+            logger.info("Created missing template file: %s", file_path)
 
 TEMPLATES_DIR = get_templates_dir()
 
@@ -24,20 +76,19 @@ def list_templates():
     try:
         templates = []
         templates_dir = get_templates_dir()
-        print(f"📁 Templates directory: {templates_dir}")
-        print(f"📁 Exists: {os.path.exists(templates_dir)}")
-        
-        if os.path.exists(templates_dir):
-            for filename in os.listdir(templates_dir):
-                if filename.endswith(('.csv', '.xlsx')):
-                    # Determine mode from filename
-                    mode = '1' if 'mode1' in filename else '2' if 'mode2' in filename else 'unknown'
-                    templates.append({
-                        'filename': filename,
-                        'mode': mode,
-                        'description': 'Enrollment only' if mode == '1' else 'Name + Enrollment + Department',
-                        'download_url': f'/api/templates/download/{filename}'
-                    })
+        ensure_default_templates(templates_dir)
+
+        for filename in ALLOWED_TEMPLATE_FILES:
+            file_path = os.path.join(templates_dir, filename)
+            if os.path.exists(file_path):
+                mode = '1' if 'mode1' in filename else '2' if 'mode2' in filename else 'unknown'
+                templates.append({
+                    'filename': filename,
+                    'mode': mode,
+                    'description': 'Enrollment only' if mode == '1' else 'Name + Enrollment + Department',
+                    'download_url': f'/api/templates/download/{filename}'
+                })
+
         return jsonify({
             'success': True,
             'templates': templates,
@@ -51,18 +102,13 @@ def list_templates():
 def download_template(filename):
     """Download a specific template file"""
     try:
-        # Security: only allow specific filenames
-        allowed_files = ['students_mode1.csv', 'students_mode2.csv', 'CSE_Batch_10.csv']
-        if filename not in allowed_files:
-            return jsonify({'error': 'Template not found', 'allowed': allowed_files}), 404
-        
+        if filename not in ALLOWED_TEMPLATE_FILES:
+            return jsonify({'error': 'Template not found', 'allowed': ALLOWED_TEMPLATE_FILES}), 404
+
         templates_dir = get_templates_dir()
+        ensure_default_templates(templates_dir)
         file_path = os.path.join(templates_dir, filename)
-        print(f"📥 Templates dir: {templates_dir}")
-        print(f"📥 Downloading: {file_path}")
-        print(f"📥 Exists: {os.path.exists(file_path)}")
-        print(f"📥 Dir contents: {os.listdir(templates_dir) if os.path.exists(templates_dir) else 'DIR NOT FOUND'}")
-            
+
         if not os.path.exists(file_path):
             return jsonify({
                 'error': f'Template file not found',
@@ -70,10 +116,10 @@ def download_template(filename):
                 'dir_exists': os.path.exists(templates_dir),
                 'dir_contents': os.listdir(templates_dir) if os.path.exists(templates_dir) else []
             }), 404
-            
+
         return send_from_directory(
-            templates_dir, 
-            filename, 
+            templates_dir,
+            filename,
             as_attachment=True,
             mimetype='text/csv'
         )
@@ -87,11 +133,11 @@ def download_template(filename):
 def preview_template(filename):
     """Preview a template file content"""
     try:
-        allowed_files = ['students_mode1.csv', 'students_mode2.csv', 'CSE_Batch_10.csv']
-        if filename not in allowed_files:
+        if filename not in ALLOWED_TEMPLATE_FILES:
             return jsonify({'error': 'Template not found'}), 404
-        
+
         templates_dir = get_templates_dir()
+        ensure_default_templates(templates_dir)
         file_path = os.path.join(templates_dir, filename)
         if not os.path.exists(file_path):
             return jsonify({'error': 'Template file not found'}), 404
