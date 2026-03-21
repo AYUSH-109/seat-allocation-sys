@@ -516,26 +516,38 @@ const FeedbackPage = ({ showToast }) => {
 
                             {/* Modal Content */}
                             <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                                <div>
-                                    <p className="text-xs font-bold uppercase text-gray-600 dark:text-gray-400 mb-2">Priority</p>
+                                <div className="bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 p-4 rounded-lg border-l-4 border-red-500 dark:border-red-400">
+                                    <h3 className="text-sm font-bold uppercase tracking-wider text-red-600 dark:text-red-300 mb-2 flex items-center gap-2">
+                                        <AlertTriangle size={16} />
+                                        Priority
+                                    </h3>
                                     <p className="text-lg font-bold text-gray-900 dark:text-white">{selectedFeedback.priority}</p>
                                 </div>
 
-                                <div>
-                                    <p className="text-xs font-bold uppercase text-gray-600 dark:text-gray-400 mb-2">Description</p>
+                                <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 p-4 rounded-lg border-l-4 border-blue-500 dark:border-blue-400">
+                                    <h3 className="text-sm font-bold uppercase tracking-wider text-blue-600 dark:text-blue-300 mb-2 flex items-center gap-2">
+                                        <AlertCircle size={16} />
+                                        Description
+                                    </h3>
                                     <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{selectedFeedback.description}</p>
                                 </div>
 
                                 {selectedFeedback.feature_suggestion && (
-                                    <div>
-                                        <p className="text-xs font-bold uppercase text-gray-600 dark:text-gray-400 mb-2">Feature Suggestion</p>
+                                    <div className="bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 p-4 rounded-lg border-l-4 border-emerald-500 dark:border-emerald-400">
+                                        <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-300 mb-2 flex items-center gap-2">
+                                            <Lightbulb size={16} />
+                                            Feature Suggestion
+                                        </h3>
                                         <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{selectedFeedback.feature_suggestion}</p>
                                     </div>
                                 )}
 
                                 {selectedFeedback.additional_info && (
-                                    <div>
-                                        <p className="text-xs font-bold uppercase text-gray-600 dark:text-gray-400 mb-2">Additional Info</p>
+                                    <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 p-4 rounded-lg border-l-4 border-purple-500 dark:border-purple-400">
+                                        <h3 className="text-sm font-bold uppercase tracking-wider text-purple-600 dark:text-purple-300 mb-2 flex items-center gap-2">
+                                            <Upload size={16} />
+                                            Additional Info
+                                        </h3>
                                         <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono text-sm">{selectedFeedback.additional_info}</p>
                                     </div>
                                 )}
