@@ -102,6 +102,7 @@ const AdminFeedbackPage = ({ showToast }) => {
   const [sortBy, setSortBy] = useState('newest');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [filterType, setFilterType] = useState('all');
+  const [resolvingFeedback, setResolvingFeedback] = useState(false);
 
   // Redirect if not admin
   useEffect(() => {
@@ -138,6 +139,53 @@ const AdminFeedbackPage = ({ showToast }) => {
       showToast('Error loading feedback', 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Mark feedback as resolved
+  const handleMarkAsResolved = async () => {
+    if (!selectedFeedback) return;
+    
+    setResolvingFeedback(true);
+    try {
+      const token = getToken();
+      const response = await fetch(`/api/feedback/${selectedFeedback.id}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          status: 'resolved',
+          admin_response: ''
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        showToast('Feedback marked as resolved', 'success');
+        
+        // Update local state
+        setFeedbacks(feedbacks.map(fb => 
+          fb.id === selectedFeedback.id ? data.feedback : fb
+        ));
+        setSelectedFeedback(data.feedback);
+        
+        // Close modal after a short delay
+        setTimeout(() => {
+          setIsModalOpen(false);
+        }, 500);
+      } else if (response.status === 403) {
+        showToast('You do not have permission to update this', 'error');
+      } else {
+        const error = await response.json();
+        showToast(error.error || 'Failed to update status', 'error');
+      }
+    } catch (error) {
+      console.error('Error marking as resolved:', error);
+      showToast('Error updating feedback status', 'error');
+    } finally {
+      setResolvingFeedback(false);
     }
   };
 
@@ -197,7 +245,7 @@ const AdminFeedbackPage = ({ showToast }) => {
         } else if (sortBy === 'oldest') {
           return new Date(a.created_at) - new Date(b.created_at);
         } else if (sortBy === 'priority') {
-          const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+          const priorityOrder = { high: 0, medium: 1, low: 2 };
           return (priorityOrder[a.priority] || 4) - (priorityOrder[b.priority] || 4);
         }
         return 0;
@@ -311,7 +359,7 @@ const AdminFeedbackPage = ({ showToast }) => {
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Priority:</span>
               <div className="flex gap-2">
-                {['all', 'critical', 'high', 'medium', 'low'].map((p) => (
+                {['all', 'high', 'medium', 'low'].map((p) => (
                   <motion.button
                     key={p}
                     whileHover={{ scale: 1.05 }}
@@ -640,9 +688,27 @@ const AdminFeedbackPage = ({ showToast }) => {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-orange-500 to-amber-600 text-white transition-all"
+                  onClick={handleMarkAsResolved}
+                  disabled={resolvingFeedback || selectedFeedback?.status === 'resolved'}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all ${
+                    selectedFeedback?.status === 'resolved'
+                      ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700'
+                  }`}
                 >
-                  Mark as Resolved
+                  {resolvingFeedback ? (
+                    <>
+                      <Loader2 size={16} className="inline mr-2 animate-spin" />
+                      Resolving...
+                    </>
+                  ) : selectedFeedback?.status === 'resolved' ? (
+                    <>
+                      <CheckCircle size={16} className="inline mr-2" />
+                      Resolved
+                    </>
+                  ) : (
+                    'Mark as Resolved'
+                  )}
                 </motion.button>
               </div>
             </motion.div>
