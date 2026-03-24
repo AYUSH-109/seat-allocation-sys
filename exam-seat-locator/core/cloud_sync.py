@@ -13,6 +13,12 @@ import time
 from typing import Any
 
 import requests
+try:
+    import boto3
+    from botocore.client import Config as BotoConfig
+except ImportError:
+    boto3 = None
+    BotoConfig = None
 
 import config
 from . import sync_queue
@@ -44,10 +50,14 @@ def verify_signature(raw_body: bytes, signature_header: str | None) -> bool:
 
 
 def enqueue_notification(payload: dict[str, Any]) -> tuple[bool, str]:
-    event_id = payload.get("event_id") or f"evt-{payload.get('plan_id', 'unknown')}-{int(time.time())}"
     plan_id = payload.get("plan_id")
+    if not plan_id and payload.get("filename"):
+        plan_id = payload.get("filename").replace(".json", "")
+    
+    event_id = payload.get("event_id") or f"evt-{plan_id or 'unknown'}-{int(time.time())}"
+    
     if not plan_id:
-        return False, "plan_id is required"
+        return False, "plan_id or filename is required"
 
     inserted = sync_queue.enqueue(event_id=event_id, plan_id=plan_id, payload=payload)
     if not inserted:
@@ -68,9 +78,50 @@ def _fetch_plan_content(payload: dict[str, Any]) -> bytes:
     if payload.get("plan_json"):
         return json.dumps(payload["plan_json"], ensure_ascii=False).encode("utf-8")
 
+    # If the notification comes from the Cloudflare worker, we might not have 'object_url'
+    # but we can deduce 'filename'/'plan_id' and fetch via boto3
     object_url = payload.get("object_url")
+    
+    # R2 configuration
+    account_id = os.getenv("R2_ACCOUNT_ID", "").strip()
+    access_key = os.getenv("R2_ACCESS_KEY_ID", "").strip()
+    secret_key = os.getenv("R2_SECRET_ACCESS_KEY", "").strip()
+    bucket = os.getenv("R2_BUCKET_NAME", "").strip()
+    
+    if account_id and access_key and secret_key and bucket and boto3:
+        # Resolve filename from payload
+        filename = payload.get("filename")
+        if not filename and payload.get("plan_id"):
+            pid = payload["plan_id"]
+            filename = f"PLAN-{pid}.json" if not pid.startswith("PLAN-") else f"{pid}.json"
+            
+        if filename:
+            try:
+                endpoint = f"https://{account_id}.r2.cloudflarestorage.com"
+                
+                # Crucial Update: Prepend plans/ to all object keys
+                # Ensure we strip any existing 'plan/' or 'plans/' prefix to avoid 'plans/plans/...'
+                clean_filename = filename.replace("plans/", "").replace("plan/", "")
+                object_key = f"plans/{clean_filename}"
+
+                client = boto3.client(
+                    "s3",
+                    endpoint_url=endpoint,
+                    aws_access_key_id=access_key,
+                    aws_secret_access_key=secret_key,
+                    region_name="auto",
+                    config=BotoConfig(signature_version="s3v4", s3={"addressing_style": "path"}),
+                )
+                
+                logger.info(f"Downloading {object_key} from R2 bucket {bucket} via boto3")
+                response = client.get_object(Bucket=bucket, Key=object_key)
+                return response['Body'].read()
+            except Exception as e:
+                logger.error(f"Failed to fetch from R2 via boto3: {e}")
+                # Fallback to old object_url method if available
+
     if not object_url:
-        raise ValueError("Missing object_url or plan_json in payload")
+        raise ValueError("Missing object_url or plan_json, and R2 download failed/not configured.")
 
     headers = {}
     bearer = payload.get("download_bearer")

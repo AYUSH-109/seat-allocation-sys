@@ -68,21 +68,29 @@ class CloudSyncService:
     def _push_plan_worker(event: dict) -> dict:
         endpoint = os.getenv("CLOUD_SYNC_INGRESS_URL", "").strip()
         if not endpoint:
-            return {"enabled": False, "success": False, "mode": "worker", "error": "CLOUD_SYNC_INGRESS_URL not configured"}
+            # Fallback to the new worker URL if an old one is missing
+            endpoint = "https://r2-event-notifier.harshit31250.workers.dev"
 
-        secret = os.getenv("CLOUD_SYNC_SHARED_SECRET", "").strip()
         max_retries = int(os.getenv("CLOUD_SYNC_MAX_RETRIES", "5"))
         base_backoff = int(os.getenv("CLOUD_SYNC_BACKOFF_BASE_SECONDS", "2"))
 
-        body = json.dumps(event, ensure_ascii=False).encode("utf-8")
+        # The new prompt states we need to PUT the file to the worker URL, where the filename is in the URL.
+        file_name = f"PLAN-{event['plan_id']}.json" if not event['plan_id'].startswith("PLAN-") else f"{event['plan_id']}.json"
+        
+        # Ensure endpoint doesn't have a trailing slash before appending filename
+        if endpoint.endswith('/'):
+            endpoint = endpoint[:-1]
+        
+        target_url = f"{endpoint}/{file_name}"
+        
+        body = json.dumps(event.get("plan_json", event), ensure_ascii=False).encode("utf-8")
         headers = {"Content-Type": "application/json"}
-        if secret:
-            headers["X-Signature"] = CloudSyncService._sign(body, secret)
 
         last_err = None
         for attempt in range(1, max_retries + 1):
             try:
-                resp = requests.post(endpoint, data=body, headers=headers, timeout=20)
+                # The worker uses PUT to simulate file upload and save to R2
+                resp = requests.put(target_url, data=body, headers=headers, timeout=20)
                 if 200 <= resp.status_code < 300:
                     return {
                         "enabled": True,

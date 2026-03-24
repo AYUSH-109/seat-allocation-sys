@@ -1,0 +1,30 @@
+nohup: ignoring input
+2026-01-15 23:00:15,515 - algo.main - INFO - Initializing Modular Flask Application...
+2026-01-15 23:00:15,518 - algo.database.schema - INFO - 🔧 Initializing database...
+2026-01-15 23:00:15,520 - algo.database.schema - INFO - ✅ Database initialized successfully at /home/blazex/Documents/git/seat-allocation-sys/demo.db
+2026-01-15 23:00:15,521 - algo.database.schema - INFO - 📊 Database stats: 2 classrooms, 90 students, 4 active sessions
+✅ Auth Database initialized at: /home/blazex/Documents/git/seat-allocation-sys/algo/user_auth.db
+======================================================================
+🚀 Starting Seat Allocation System - Modular Backend
+======================================================================
+🔧 Environment: development
+======================================================================
+ * Serving Flask app 'algo.main'
+ * Debug mode: on
+2026-01-15 23:00:15,604 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.9:5000
+2026-01-15 23:00:15,605 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-01-15 23:00:15,606 - werkzeug - INFO -  * Restarting with stat
+2026-01-15 23:00:16,774 - algo.main - INFO - Initializing Modular Flask Application...
+2026-01-15 23:00:16,777 - algo.database.schema - INFO - 🔧 Initializing database...
+2026-01-15 23:00:16,779 - algo.database.schema - INFO - ✅ Database initialized successfully at /home/blazex/Documents/git/seat-allocation-sys/demo.db
+2026-01-15 23:00:16,779 - algo.database.schema - INFO - 📊 Database stats: 2 classrooms, 90 students, 4 active sessions
+2026-01-15 23:00:16,845 - werkzeug - WARNING -  * Debugger is active!
+2026-01-15 23:00:16,850 - werkzeug - INFO -  * Debugger PIN: 115-252-117
+2026-01-15 23:00:16,963 - werkzeug - INFO - 127.0.0.1 - - [15/Jan/2026 23:00:16] "GET /api/health HTTP/1.1" 200 -
+2026-01-15 23:00:26,129 - werkzeug - INFO - 127.0.0.1 - - [15/Jan/2026 23:00:26] "POST /api/auth/login HTTP/1.1" 200 -
+2026-01-15 23:00:39,034 - werkzeug - INFO - 127.0.0.1 - - [15/Jan/2026 23:00:39] "POST /api/auth/login HTTP/1.1" 200 -
+2026-01-15 23:01:01,911 - werkzeug - INFO - 127.0.0.1 - - [15/Jan/2026 23:01:01] "GET /api/database/hierarchy HTTP/1.1" 200 -
+2026-01-15 23:01:01,929 - werkzeug - INFO - 127.0.0.1 - - [15/Jan/2026 23:01:01] "GET /api/database/hierarchy HTTP/1.1" 200 -
