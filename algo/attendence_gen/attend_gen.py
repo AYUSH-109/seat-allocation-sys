@@ -258,7 +258,7 @@ def process_and_generate_from_cache(plan_id, frontend_metadata=None):
     metadata = {
         "room_no": inputs.get('room_id', 'Manual'),
         "date": json_data.get('metadata', {}).get('last_updated', '').split('T')[0],
-        "course_name": "N/A", "course_code": "N/A", "exam_title": "ATTENDANCE SHEET", "year": "2025"
+        "course_name": "", "course_code": "", "exam_title": "ATTENDANCE SHEET", "year": "2025"
     }
     if frontend_metadata: metadata.update(frontend_metadata)
 

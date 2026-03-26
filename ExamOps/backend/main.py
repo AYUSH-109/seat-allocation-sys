@@ -57,18 +57,21 @@ class ReportBase(BaseModel):
     cancelled_copies: int = 0
     copies_returned: int
     room_number: str
-    class1: str
+    branch1: str
+    semester1: str
     subject_class1: str
     students_class1: int
-    class2: Optional[str] = ''
+    branch2: Optional[str] = ''
+    semester2: Optional[str] = ''
     subject_class2: Optional[str] = ''
     students_class2: Optional[int] = 0
-    class3: Optional[str] = ''
+    branch3: Optional[str] = ''
+    semester3: Optional[str] = ''
     subject_class3: Optional[str] = ''
     students_class3: Optional[int] = 0
     remarks: Optional[str] = ''
     
-    @validator('user_email', 'faculty_invigilator1', 'faculty_invigilator2', 'room_number', 'class1', 'subject_class1')
+    @validator('user_email', 'faculty_invigilator1', 'faculty_invigilator2', 'room_number', 'branch1', 'semester1', 'subject_class1')
     def validate_not_empty(cls, v):
         if not v or not v.strip():
             raise ValueError('Field cannot be empty')
@@ -79,6 +82,22 @@ class ReportBase(BaseModel):
         valid_slots = ['9AM-11AM', '11AM-1PM', '1PM-4PM', '4PM-6PM']
         if v not in valid_slots:
             raise ValueError(f'Time slot must be one of: {", ".join(valid_slots)}')
+        return v
+    
+    @validator('branch1', 'branch2', 'branch3')
+    def validate_branch(cls, v):
+        if v:  # Only validate if not empty
+            valid_branches = ['B.Tech(CSE)', 'B.Tech(CSD)', 'M.Tech(CSE)', 'M.Tech(CSD)', 'MCA']
+            if v not in valid_branches:
+                raise ValueError(f'Branch must be one of: {", ".join(valid_branches)}')
+        return v
+    
+    @validator('semester1', 'semester2', 'semester3')
+    def validate_semester(cls, v):
+        if v:  # Only validate if not empty
+            valid_semesters = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII']
+            if v not in valid_semesters:
+                raise ValueError(f'Semester must be one of: {", ".join(valid_semesters)}')
         return v
     
     @validator('blank_copies_received', 'copies_used', 'cancelled_copies', 'copies_returned', 'students_class1')
