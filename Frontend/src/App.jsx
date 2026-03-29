@@ -1,71 +1,43 @@
 // frontend/src/App.jsx
-import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { Suspense, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SessionProvider, useSession } from './contexts/SessionContext';
 
 // --- Components ---
-import Navbar from './components/Navbar';
-import Footer from './components/Footer';
 import Toast from './components/Toast';
-import SessionRecoveryModal from './components/SessionRecoveryModal';
 import ErrorBoundary from './components/ErrorBoundary';
+const Navbar = React.lazy(() => import('./components/Navbar'));
+const Footer = React.lazy(() => import('./components/Footer'));
+const SessionRecoveryModal = React.lazy(() => import('./components/SessionRecoveryModal'));
 
-// --- Pages ---
-import LandingPage from './pages/LandingPage';
-import LoginPage from './pages/LoginPage';
-import SignupPage from './pages/SignupPage';
-import ProfilePage from './pages/ProfilePage';
-import DashboardPage from './pages/DashboardPage';
-import UploadPage from './pages/UploadPage';
-import Allocation from './pages/Allocation';
-import CreatePlan from './pages/CreatePlan';
-import FeedbackPage from './pages/FeedbackPage';
-import AdminFeedbackPage from './pages/AdminFeedbackPage';
-import AboutusPage from './pages/AboutusPage';
-import TemplateEditor from './pages/TemplateEditor';
-import AttendancePage from './pages/AttendencePage';
-import MoreOptionsPage from './pages/MoreOptionsPage';
-import ClassroomPage from './pages/ClassroomPage';
-import { DatabaseManager } from './components/database';
-import ManualAllocation from './pages/ManualAllocation';
-
-// -------------------------------------------------------------------
-// PAGE TRANSITION CONFIG (Single source of truth)
-// -------------------------------------------------------------------
-const pageTransitionVariants = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -8 },
-};
-
-const pageTransitionConfig = {
-  duration: 0.2,
-  ease: [0.25, 0.1, 0.25, 1],
-};
+// --- Pages (lazy-loaded for better initial performance) ---
+const LandingPage = React.lazy(() => import('./pages/LandingPage'));
+const LoginPage = React.lazy(() => import('./pages/LoginPage'));
+const SignupPage = React.lazy(() => import('./pages/SignupPage'));
+const ProfilePage = React.lazy(() => import('./pages/ProfilePage'));
+const DashboardPage = React.lazy(() => import('./pages/DashboardPage'));
+const UploadPage = React.lazy(() => import('./pages/UploadPage'));
+const Allocation = React.lazy(() => import('./pages/Allocation'));
+const CreatePlan = React.lazy(() => import('./pages/CreatePlan'));
+const FeedbackPage = React.lazy(() => import('./pages/FeedbackPage'));
+const AdminFeedbackPage = React.lazy(() => import('./pages/AdminFeedbackPage'));
+const AboutusPage = React.lazy(() => import('./pages/AboutusPage'));
+const TemplateEditor = React.lazy(() => import('./pages/TemplateEditor'));
+const AttendancePage = React.lazy(() => import('./pages/AttendencePage'));
+const MoreOptionsPage = React.lazy(() => import('./pages/MoreOptionsPage'));
+const ClassroomPage = React.lazy(() => import('./pages/ClassroomPage'));
+const DatabaseManager = React.lazy(() =>
+  import('./components/database').then((module) => ({ default: module.DatabaseManager }))
+);
+const ManualAllocation = React.lazy(() => import('./pages/ManualAllocation'));
 
 // -------------------------------------------------------------------
-// ANIMATED LAYOUT (The key component - animates Outlet)
+// ROUTE OUTLET LAYOUT
 // -------------------------------------------------------------------
-const AnimatedLayout = ({ showToast }) => {
-  const location = useLocation();
-  
-  return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={location.pathname}
-        initial="initial"
-        animate="animate"
-        exit="exit"
-        variants={pageTransitionVariants}
-        transition={pageTransitionConfig}
-      >
-        <Outlet context={{ showToast }} />
-      </motion.div>
-    </AnimatePresence>
-  );
+const RouteOutletLayout = ({ showToast }) => {
+  return <Outlet context={{ showToast }} />;
 };
 
 // -------------------------------------------------------------------
@@ -103,7 +75,11 @@ const SessionRecoveryHandler = () => {
   }, [sessions]);
 
   if (!showRecoveryModal || sessions.length === 0) return null;
-  return <SessionRecoveryModal onClose={() => setShowRecoveryModal(false)} />;
+  return (
+    <Suspense fallback={null}>
+      <SessionRecoveryModal onClose={() => setShowRecoveryModal(false)} />
+    </Suspense>
+  );
 };
 
 // -------------------------------------------------------------------
@@ -113,11 +89,41 @@ const RootLayout = ({ showToast }) => {
   return (
     <div className="min-h-screen flex flex-col bg-white dark:bg-[#050505] transition-colors duration-200">
       <SessionRecoveryHandler />
-      <Navbar />
+      <Suspense fallback={null}>
+        <Navbar />
+      </Suspense>
       <main className="flex-1">
-        <AnimatedLayout showToast={showToast} />
+        <Suspense
+          fallback={
+            <div className="min-h-[40vh] flex items-center justify-center" role="status" aria-live="polite">
+              <div className="w-8 h-8 border-2 border-gray-200 dark:border-gray-700 border-t-orange-500 rounded-full animate-spin" />
+            </div>
+          }
+        >
+          <RouteOutletLayout showToast={showToast} />
+        </Suspense>
       </main>
-      <Footer />
+      <Suspense fallback={null}>
+        <Footer />
+      </Suspense>
+    </div>
+  );
+};
+
+const AuthLayout = ({ showToast }) => {
+  return (
+    <div className="min-h-screen bg-white dark:bg-[#050505] transition-colors duration-200">
+      <main>
+        <Suspense
+          fallback={
+            <div className="min-h-[40vh] flex items-center justify-center" role="status" aria-live="polite">
+              <div className="w-8 h-8 border-2 border-gray-200 dark:border-gray-700 border-t-orange-500 rounded-full animate-spin" />
+            </div>
+          }
+        >
+          <RouteOutletLayout showToast={showToast} />
+        </Suspense>
+      </main>
     </div>
   );
 };
@@ -138,12 +144,10 @@ const AppRoutes = () => {
       <Routes>
         {/* Root Layout wraps all routes - handles animation once */}
         <Route element={<RootLayout showToast={showToast} />}>
-          
+
           {/* Public Routes */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/aboutus" element={<AboutusPage showToast={showToast} />} />
-          <Route path="/login" element={<LoginPage showToast={showToast} />} />
-          <Route path="/signup" element={<SignupPage showToast={showToast} />} />
 
           {/* Protected Routes - Clean syntax */}
           <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
@@ -160,17 +164,22 @@ const AppRoutes = () => {
           <Route path="/more-options/:planId" element={<ProtectedRoute><MoreOptionsPage showToast={showToast} /></ProtectedRoute>} />
           <Route path="/database" element={<ProtectedRoute><DatabaseManager showToast={showToast} /></ProtectedRoute>} />
 
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
+
+        {/* Auth routes without shell to improve login/signup performance */}
+        <Route element={<AuthLayout showToast={showToast} />}>
+          <Route path="/login" element={<LoginPage showToast={showToast} />} />
+          <Route path="/signup" element={<SignupPage showToast={showToast} />} />
+        </Route>
+
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
       {/* Toast - Outside routes */}
-      <AnimatePresence>
-        {toast && (
-          <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
-        )}
-      </AnimatePresence>
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
+      )}
     </>
   );
 };
@@ -179,19 +188,8 @@ const AppRoutes = () => {
 // APP CONTENT (Handles loading states)
 // -------------------------------------------------------------------
 const AppContent = () => {
-  const { loading: authLoading } = useAuth();
-  const sessionCtx = useSession();
-
-  if (authLoading || sessionCtx?.loading) {
-    return (
-      <div className="min-h-screen bg-white dark:bg-[#050505] flex items-center justify-center">
-        <div className="text-center space-y-3">
-          <div className="w-10 h-10 border-2 border-gray-200 dark:border-gray-700 border-t-orange-500 rounded-full animate-spin mx-auto" />
-          <p className="text-gray-500 dark:text-gray-400 text-sm">Initializing...</p>
-        </div>
-      </div>
-    );
-  }
+  useAuth();
+  useSession();
 
   return <AppRoutes />;
 };

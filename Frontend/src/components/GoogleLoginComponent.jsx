@@ -1,7 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+
+const GOOGLE_GSI_SCRIPT_ID = 'google-gsi-client-script';
 
 const GoogleLoginComponent = ({ showToast, onNeedsRole }) => {
   const navigate = useNavigate();
@@ -9,59 +11,7 @@ const GoogleLoginComponent = ({ showToast, onNeedsRole }) => {
   const [loading, setLoading] = React.useState(false);
   const [googleAvailable, setGoogleAvailable] = React.useState(true);
 
-  useEffect(() => {
-    // Check if Google Client ID is configured
-    const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
-    if (!clientId || clientId === 'your_client_id' || clientId.length < 20) {
-      console.warn('⚠️ Google Client ID not configured. Hiding Google Sign-In button.');
-      setGoogleAvailable(false);
-      return;
-    }
-
-    // Initialize Google Sign-In when component mounts
-    if (window.google) {
-      try {
-        window.google.accounts.id.initialize({
-          client_id: clientId,
-          callback: handleCredentialResponse,
-          ux_mode: 'popup',
-          auto_select: false,
-          // Help diagnose origin issues
-          context: 'signin',
-          itp_support: true,
-        });
-
-        // Log configuration for debugging (redacted sensitive parts)
-        console.log('🛠️ GSI Configured:', {
-          clientId: clientId?.substring(0, 20) + '...',
-          origin: window.location.origin,
-          apiBase: process.env.REACT_APP_API_BASE_URL || '/'
-        });
-
-        window.google.accounts.id.renderButton(
-          document.getElementById('google-signin-button'),
-          {
-            theme: 'outline',
-            size: 'large',
-            width: '100%',
-            text: 'signin_with',
-            locale: 'en',
-          }
-        );
-
-        console.log('✅ Google Sign-In button rendered');
-      } catch (error) {
-        console.error('❌ Google initialization error:', error);
-        // Hide Google button on error instead of showing toast
-        setGoogleAvailable(false);
-      }
-    } else {
-      console.warn('⚠️ Google API not loaded');
-      setGoogleAvailable(false);
-    }
-  }, []);  // Remove showToast dependency to prevent re-renders
-
-  const handleCredentialResponse = async (response) => {
+  const handleCredentialResponse = useCallback(async (response) => {
     try {
       setLoading(true);
 
@@ -72,8 +22,6 @@ const GoogleLoginComponent = ({ showToast, onNeedsRole }) => {
         return;
       }
 
-      console.log('🔐 Google token received, authenticating...');
-
       // Send token to backend
       const result = await googleLogin(response.credential);
 
@@ -82,7 +30,6 @@ const GoogleLoginComponent = ({ showToast, onNeedsRole }) => {
       if (result.success) {
         // Check if new user needs role selection
         if (result.needs_role) {
-          console.log('🔄 Redirecting to role selection...');
           if (onNeedsRole) {
             onNeedsRole({
               google_token: response.credential,
@@ -106,22 +53,85 @@ const GoogleLoginComponent = ({ showToast, onNeedsRole }) => {
           return;
         }
 
-        console.log('✅ Google login successful');
         showToast('Welcome! Logged in with Google', 'success');
         // Navigate to dashboard after a short delay
         setTimeout(() => {
           navigate('/dashboard');
         }, 500);
       } else {
-        console.error('❌ Google login failed:', result.error);
         showToast(result.error || 'Google login failed', 'error');
       }
     } catch (error) {
       setLoading(false);
-      console.error('❌ Google login error:', error);
       showToast(error.message || 'Google login error', 'error');
     }
-  };
+  }, [googleLogin, navigate, onNeedsRole, showToast]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    // Check if Google Client ID is configured
+    const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+    if (!clientId || clientId === 'your_client_id' || clientId.length < 20) {
+      setGoogleAvailable(false);
+      return;
+    }
+
+    const initializeGsi = () => {
+      if (cancelled || !window.google) {
+        if (!cancelled) setGoogleAvailable(false);
+        return;
+      }
+
+      try {
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: handleCredentialResponse,
+          ux_mode: 'popup',
+          auto_select: false,
+          // Help diagnose origin issues
+          context: 'signin',
+          itp_support: true,
+        });
+
+        window.google.accounts.id.renderButton(
+          document.getElementById('google-signin-button'),
+          {
+            theme: 'outline',
+            size: 'large',
+            width: '100%',
+            text: 'signin_with',
+            locale: 'en',
+          }
+        );
+      } catch (error) {
+        // Hide Google button on error instead of showing toast
+        if (!cancelled) setGoogleAvailable(false);
+      }
+    };
+
+    const existingScript = document.getElementById(GOOGLE_GSI_SCRIPT_ID);
+    if (window.google) {
+      initializeGsi();
+    } else if (existingScript) {
+      existingScript.addEventListener('load', initializeGsi, { once: true });
+    } else {
+      const script = document.createElement('script');
+      script.id = GOOGLE_GSI_SCRIPT_ID;
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.onload = initializeGsi;
+      script.onerror = () => {
+        if (!cancelled) setGoogleAvailable(false);
+      };
+      document.head.appendChild(script);
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [handleCredentialResponse]);
 
   return (
     <div className="w-full">

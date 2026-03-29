@@ -82,13 +82,33 @@ html {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  transition: background-color 0.25s ease,
-              border-color 0.25s ease,
-              color 0.25s ease;
+}
+
+a,
+button,
+input,
+textarea,
+select {
+  transition: background-color 0.2s ease,
+              border-color 0.2s ease,
+              color 0.2s ease,
+              box-shadow 0.2s ease,
+              transform 0.2s ease;
 }
 
 .no-transition * {
   transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 body {

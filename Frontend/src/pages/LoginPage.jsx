@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Loader2, ArrowRight, Shield, Sparkles } from 'lucide-react';
-import SplitText from '../components/SplitText';
 import { useAuth } from '../contexts/AuthContext';
 import GoogleLoginComponent from '../components/GoogleLoginComponent';
 
@@ -54,7 +53,7 @@ const LoginPage = ({ showToast }) => {
               </span>
             </div>
 
-            <SplitText text={`Welcome Back`} className="text-4xl font-black text-gray-900 dark:text-white mb-3" splitType="chars" delay={30} />
+            <h1 className="text-4xl font-black text-gray-900 dark:text-white mb-3">Welcome Back</h1>
             <p className="text-gray-600 dark:text-gray-400">
               Login to your account to continue
             </p>
@@ -74,12 +73,13 @@ const LoginPage = ({ showToast }) => {
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email Input */}
             <div>
-              <label className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
+              <label htmlFor="login-email" className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
                 <Mail size={14} className="text-orange-500" />
                 Email Address
               </label>
               <div className="relative">
                 <input
+                  id="login-email"
                   type="email"
                   name="email"
                   value={formData.email}
@@ -93,12 +93,13 @@ const LoginPage = ({ showToast }) => {
 
             {/* Password Input */}
             <div>
-              <label className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
+              <label htmlFor="login-password" className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
                 <Lock size={14} className="text-orange-500" />
                 Password
               </label>
               <div className="relative">
                 <input
+                  id="login-password"
                   type="password"
                   name="password"
                   value={formData.password}
@@ -160,7 +161,7 @@ const LoginPage = ({ showToast }) => {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes fadeInUp {
           from {
             opacity: 0;

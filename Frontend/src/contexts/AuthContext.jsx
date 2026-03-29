@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
-  getToken, setToken, removeToken,
+  getToken, setToken,
   getUser as getStoredUser, setUserData, clearAuth,
-  migrateFromLocalStorage, getAuthHeaders
+  migrateFromLocalStorage
 } from '../utils/tokenStorage';
 
 const AuthContext = createContext();
@@ -35,12 +35,8 @@ export const AuthProvider = ({ children }) => {
         if (token && userData) {
           // User was previously logged in - restore session
           setUser(userData);
-          console.log('✅ User session restored from sessionStorage (tab-isolated)');
-        } else {
-          console.log('ℹ️  No saved session found');
         }
       } catch (error) {
-        console.error('Error restoring session:', error);
         // Clear corrupted data
         clearAuth();
       }
@@ -56,7 +52,6 @@ export const AuthProvider = ({ children }) => {
   // ============================================================================
   useEffect(() => {
     localStorage.setItem('darkMode', JSON.stringify(darkMode));
-    console.log(`🌓 Dark mode ${darkMode ? 'enabled' : 'disabled'}`);
   }, [darkMode]);
 
   // ============================================================================
@@ -98,7 +93,6 @@ export const AuthProvider = ({ children }) => {
       // Check if response is JSON (not HTML error page)
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
-        console.error('Server returned non-JSON response. Is Flask running?');
         return { success: false, error: 'Server unavailable. Please ensure the backend is running.' };
       }
 
@@ -110,7 +104,6 @@ export const AuthProvider = ({ children }) => {
 
       // Handle needs_role response (new Google user without role)
       if (data.status === 'needs_role' || data.needs_role) {
-        console.log('🔄 New Google user — role selection required');
         return {
           success: true,
           needs_role: true,
@@ -126,10 +119,8 @@ export const AuthProvider = ({ children }) => {
       setUserData(data.user);
       setUser(data.user);
 
-      console.log('✅ Google login successful');
       return { success: true, user: data.user };
     } catch (error) {
-      console.error('Google login error:', error);
       return { success: false, error: 'Server unavailable. Please ensure the backend is running.' };
     }
   };
@@ -150,7 +141,6 @@ export const AuthProvider = ({ children }) => {
       // Check if response is JSON (not HTML error page)
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
-        console.error('Server returned non-JSON response. Is Flask running?');
         return { success: false, error: 'Server unavailable. Please ensure the backend is running.' };
       }
 
@@ -165,10 +155,8 @@ export const AuthProvider = ({ children }) => {
       setUserData(data.user);
       setUser(data.user);
 
-      console.log('✅ Email login successful');
       return { success: true };
     } catch (error) {
-      console.error('Login error:', error);
       return { success: false, error: 'Server unavailable. Please ensure the backend is running.' };
     }
   };
@@ -189,7 +177,6 @@ const signup = async (userData) => {
     // Check if response is JSON (not HTML error page)
     const contentType = response.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
-      console.error('Server returned non-JSON response. Is Flask running?');
       return { success: false, error: 'Server unavailable. Please ensure the backend is running.' };
     }
 
@@ -209,7 +196,6 @@ const signup = async (userData) => {
       setUserData(data.user);
       setUser(data.user);
 
-      console.log('✅ Signup successful - User auto-logged in');
       return { 
         success: true, 
         message: data.message || 'Signup successful. You are now logged in!',
@@ -222,7 +208,6 @@ const signup = async (userData) => {
       error: 'Signup response incomplete' 
     };
   } catch (error) {
-    console.error('Signup error:', error);
     return { 
       success: false, 
       error: 'Server unavailable. Please ensure the backend is running.' 
@@ -242,13 +227,10 @@ const signup = async (userData) => {
           'Authorization': `Bearer ${token}`,
         },
       });
-    } catch (error) {
-      console.error('Logout error:', error);
     } finally {
       // Clear sessionStorage auth data (per-tab)
       clearAuth();
       setUser(null);
-      console.log('✅ Logged out successfully');
     }
   };
 
@@ -272,7 +254,6 @@ const signup = async (userData) => {
       // Check if response is JSON (not HTML error page)
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
-        console.error('Server returned non-JSON response. Is Flask running?');
         return { success: false, error: 'Server unavailable' };
       }
 
@@ -284,7 +265,6 @@ const signup = async (userData) => {
 
       return { success: true, user: data.user };
     } catch (error) {
-      console.error('Profile fetch error:', error);
       return { success: false, error: 'Server unavailable' };
     }
   };
@@ -311,7 +291,6 @@ const signup = async (userData) => {
       // Check if response is JSON (not HTML error page)
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
-        console.error('Server returned non-JSON response. Is Flask running?');
         return { success: false, error: 'Server unavailable' };
       }
 
@@ -329,7 +308,6 @@ const signup = async (userData) => {
 
       return { success: true, message: data.message };
     } catch (error) {
-      console.error('Profile update error:', error);
       return { success: false, error: 'Server unavailable' };
     }
   };

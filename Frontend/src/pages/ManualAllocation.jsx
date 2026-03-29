@@ -159,7 +159,8 @@ const ManualAllocation = ({ showToast }) => {
                     </div>
                     <button 
                         onClick={generateSeating} 
-                        disabled={isLoading} 
+                        disabled={isLoading}
+                        aria-label={isLoading ? "Generating seating plan" : "Generate seating plan"}
                         className="h-14 px-10 bg-orange-500 hover:bg-orange-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs flex items-center gap-2 transition-all shadow-lg disabled:opacity-50"
                     >
                         {isLoading ? <RefreshCw className="animate-spin" /> : <Layout size={20} />}
@@ -173,14 +174,14 @@ const ManualAllocation = ({ showToast }) => {
                         <div className="p-6 rounded-3xl bg-gray-50 dark:bg-white/5 border-2 border-gray-100 dark:border-gray-800">
                             <h2 className={sectionHeading}><Grid size={16} /> Grid Geometry</h2>
                             <div className="grid grid-cols-2 gap-4 mb-4">
-                                <div><label className={labelStyle}>Rows</label><input type="number" id="rows" value={form.rows} onChange={handleInputChange} className={inputStyle} /></div>
-                                <div><label className={labelStyle}>Columns</label><input type="number" id="cols" value={form.cols} onChange={handleInputChange} className={inputStyle} /></div>
+                                <div><label htmlFor="rows" className={labelStyle}>Rows</label><input type="number" id="rows" value={form.rows} onChange={handleInputChange} className={inputStyle} /></div>
+                                <div><label htmlFor="cols" className={labelStyle}>Columns</label><input type="number" id="cols" value={form.cols} onChange={handleInputChange} className={inputStyle} /></div>
                             </div>
                             <div className="mb-4">
-                                <label className={labelStyle}>Number of Batches</label>
+                                <label htmlFor="numBatches" className={labelStyle}>Number of Batches</label>
                                 <input type="number" id="numBatches" value={form.numBatches} onChange={handleInputChange} className={inputStyle} />
                             </div>
-                            <label className={labelStyle}>Block Width</label>
+                            <label htmlFor="blockWidth" className={labelStyle}>Block Width</label>
                             <input type="number" id="blockWidth" value={form.blockWidth} onChange={handleInputChange} className={inputStyle} />
                         </div>
 
@@ -189,8 +190,15 @@ const ManualAllocation = ({ showToast }) => {
                             <div className="grid grid-cols-2 gap-3">
                                 {Object.entries(form.startSerials).slice(0, form.numBatches).map(([idx, val]) => (
                                     <div key={idx} className="p-3 rounded-xl bg-white dark:bg-black/40 border border-gray-200 dark:border-gray-800">
-                                        <label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-1 block">Batch {idx} Serial</label>
-                                        <input type="number" value={val} onChange={(e) => handleStartSerialChange(idx, e.target.value)} className="w-full bg-transparent font-black text-orange-500 outline-none" />
+                                        <label htmlFor={`batchSerial${idx}`} className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-1 block">Batch {idx} Serial</label>
+                                        <input 
+                                            type="number" 
+                                            id={`batchSerial${idx}`}
+                                            value={val} 
+                                            onChange={(e) => handleStartSerialChange(idx, e.target.value)} 
+                                            className="w-full bg-transparent font-black text-orange-500 outline-none"
+                                            aria-label={`Starting serial number for batch ${idx}`}
+                                        />
                                     </div>
                                 ))}
                             </div>
@@ -203,23 +211,65 @@ const ManualAllocation = ({ showToast }) => {
                             <h2 className={sectionHeading}><User size={16} /> Batch Enrollment Details</h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="md:col-span-2">
-                                    <label className={labelStyle}>Batch Names</label>
+                                    <label htmlFor="batchNamesStr" className={labelStyle}>Batch Names</label>
                                     <input type="text" id="batchNamesStr" value={form.batchNamesStr} onChange={handleInputChange} className={inputStyle} placeholder="1:CS, 2:IT, 3:ME" />
                                 </div>
                                 <div>
-                                    <label className={labelStyle}>Room Number</label>
+                                    <label htmlFor="roomNo" className={labelStyle}>Room Number</label>
                                     <input type="text" id="roomNo" value={form.roomNo} onChange={handleInputChange} className={inputStyle} placeholder="101" />
                                 </div>
                                 <div className="md:col-span-2">
-                                    <label className={labelStyle}>Batch Start Roll Numbers (Overrides)</label>
+                                    <label htmlFor="startRollsStr" className={labelStyle}>Batch Start Roll Numbers (Overrides)</label>
                                     <input 
                                         type="text" id="startRollsStr" value={form.startRollsStr} onChange={handleInputChange} className={inputStyle} 
                                         placeholder="Optional (e.g. 1:BTCS001, 2:BTCS500). Leave blank for auto-generation." 
+                                        aria-describedby="startRollsHelp"
                                     />
+                                    <p id="startRollsHelp" className="text-xs text-gray-500 dark:text-gray-400 mt-1">Leave blank to auto-generate roll numbers sequentially</p>
                                 </div>
                                 <div className="md:col-span-2">
-                                    <label className={labelStyle}>Student Counts Per Batch</label>
+                                    <label htmlFor="batchStudentCountsStr" className={labelStyle}>Student Counts Per Batch</label>
                                     <input type="text" id="batchStudentCountsStr" value={form.batchStudentCountsStr} onChange={handleInputChange} className={inputStyle} placeholder="1:30, 2:25..." />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label htmlFor="brokenSeatsStr" className={labelStyle}>Broken Seats (Optional)</label>
+                                    <input type="text" id="brokenSeatsStr" value={form.brokenSeatsStr} onChange={handleInputChange} className={inputStyle} placeholder="e.g., 1,2,15,20 (seat positions to mark as broken)" />
+                                </div>
+                            </div>
+                            
+                            {/* Constraint Toggles */}
+                            <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                                <h3 className="text-sm font-bold uppercase tracking-widest text-gray-900 dark:text-white mb-4">Seating Constraints</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <label className="flex items-center gap-3 p-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-orange-400 hover:bg-orange-50 dark:hover:bg-orange-500/10 transition-all cursor-pointer group">
+                                        <input 
+                                            type="checkbox" 
+                                            id="fillByColumn" 
+                                            checked={form.fillByColumn} 
+                                            onChange={handleInputChange}
+                                            className="w-5 h-5 rounded border-2 border-gray-300 dark:border-gray-600 accent-orange-500 cursor-pointer"
+                                            aria-label="Fill seating by column instead of by row"
+                                        />
+                                        <div className="flex-1">
+                                            <span className="font-bold text-gray-900 dark:text-white block">Fill by Column</span>
+                                            <span className="text-xs text-gray-600 dark:text-gray-400">Prefer column-wise seating arrangement</span>
+                                        </div>
+                                    </label>
+                                    
+                                    <label className="flex items-center gap-3 p-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-orange-400 hover:bg-orange-50 dark:hover:bg-orange-500/10 transition-all cursor-pointer group">
+                                        <input 
+                                            type="checkbox" 
+                                            id="enforceAdj" 
+                                            checked={form.enforceAdj} 
+                                            onChange={handleInputChange}
+                                            className="w-5 h-5 rounded border-2 border-gray-300 dark:border-gray-600 accent-orange-500 cursor-pointer"
+                                            aria-label="Prevent students from same batch sitting adjacent to each other"
+                                        />
+                                        <div className="flex-1">
+                                            <span className="font-bold text-gray-900 dark:text-white block">No Adjacent Batches</span>
+                                            <span className="text-xs text-gray-600 dark:text-gray-400">Prevent same batch from sitting next to each other</span>
+                                        </div>
+                                    </label>
                                 </div>
                             </div>
                         </div>
@@ -231,10 +281,19 @@ const ManualAllocation = ({ showToast }) => {
                                 <div className="flex items-center gap-4">
                                     {seatingData && (
                                         <>
-                                            <button onClick={() => setIsFullscreenPreview(true)} className="flex items-center gap-2 text-xs font-black uppercase text-orange-500 hover:scale-105 transition-all">
+                                            <button 
+                                                onClick={() => setIsFullscreenPreview(true)} 
+                                                aria-label="View seating arrangement in fullscreen"
+                                                className="flex items-center gap-2 text-xs font-black uppercase text-orange-500 hover:scale-105 transition-all"
+                                            >
                                                 <Maximize2 size={16} /> Fullscreen
                                             </button>
-                                            <button onClick={handleDownloadPdf} className="flex items-center gap-2 text-xs font-black uppercase text-orange-500 hover:scale-105 transition-all">
+                                            <button 
+                                                onClick={handleDownloadPdf}
+                                                disabled={isPdfGenerating}
+                                                aria-label={isPdfGenerating ? "Generating PDF" : "Export seating plan as PDF"}
+                                                className="flex items-center gap-2 text-xs font-black uppercase text-orange-500 hover:scale-105 transition-all disabled:opacity-50"
+                                            >
                                                 <Download size={16} /> Export PDF
                                             </button>
                                         </>
@@ -247,13 +306,29 @@ const ManualAllocation = ({ showToast }) => {
                                     <motion.div initial={{opacity:0}} animate={{opacity:1}} className="overflow-x-auto pb-6 custom-scrollbar">
                                         <div 
                                             className="grid gap-2 min-w-max" 
+                                            role="grid"
+                                            aria-label="Seating arrangement grid"
+                                            aria-rowcount={seatingData.metadata.rows}
+                                            aria-colcount={seatingData.metadata.cols}
                                             style={{ gridTemplateColumns: `repeat(${seatingData.metadata.cols}, 120px)` }}
                                         >
                                             {seatingData.seating.map((row, rIdx) => (
                                                 row.map((seat, cIdx) => {
                                                     const batchColor = seat.is_broken ? '#ef4444' : (seat.color || '#374151');
+                                                    const seatLabel = seat.is_broken 
+                                                        ? 'Broken'
+                                                        : `Row ${rIdx + 1}, Column ${cIdx + 1}: ${seat.roll_number || 'Empty'} - Batch ${seat.batch}`;
+                                                    
                                                     return (
-                                                        <div key={`${rIdx}-${cIdx}`} style={{ backgroundColor: batchColor }} className={`h-24 rounded-xl flex flex-col items-center justify-center p-2 text-center shadow-md border border-black/10 ${getContrastTextColor(batchColor)}`}>
+                                                        <div 
+                                                            key={`${rIdx}-${cIdx}`} 
+                                                            role="gridcell"
+                                                            aria-label={seatLabel}
+                                                            aria-rowindex={rIdx + 1}
+                                                            aria-colindex={cIdx + 1}
+                                                            style={{ backgroundColor: batchColor }} 
+                                                            className={`h-24 rounded-xl flex flex-col items-center justify-center p-2 text-center shadow-md border border-black/10 ${getContrastTextColor(batchColor)}`}
+                                                        >
                                                             {seat.is_broken ? <span className="text-[10px] font-black italic opacity-60">BROKEN</span> : (
                                                                 <>
                                                                     <span className="text-[9px] font-black opacity-60 uppercase">Batch {seat.batch}</span>

@@ -1,42 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <script>
-  (function () {
-    try {
-      const theme = localStorage.getItem('theme');
-      if (theme === 'dark') {
-        document.documentElement.classList.add('dark');
-      }
-    } catch (e) {}
-  })();
-</script>
-<script>
-  document.documentElement.classList.add('no-transition');
-  window.addEventListener('load', () => {
-    document.documentElement.classList.remove('no-transition');
-  });
-</script>
-
-
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="%PUBLIC_URL%/boot.js"></script>
     <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; script-src 'self' https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' http://127.0.0.1:5000 http://localhost:5000 https:; frame-src https://accounts.google.com;"
+    />
     <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups" />
     <meta http-equiv="Cross-Origin-Embedder-Policy" content="unsafe-none" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#000000" />
 
-    <!-- language font added  -->
-      <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=BBH+Bogle&display=swap" rel="stylesheet">
-
-        <script src="https://cdn.tailwindcss.com"></script>
-
     <meta
       name="description"
-      content="Web site created using create-react-app"
+      content="Seat Allocation System dashboard for fast, fair, and accessible exam hall planning."
     />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <!--
@@ -53,9 +32,7 @@
       work correctly both with client-side routing and a non-root public URL.
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
-    <title>React App</title>
-    <!-- html2pdf for PDF generation -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <title>Seat Allocation System</title>
     
   </head>
   <body>

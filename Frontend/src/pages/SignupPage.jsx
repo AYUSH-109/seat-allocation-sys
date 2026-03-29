@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Users, Loader2, ArrowRight, ArrowLeft, Sparkles, Mail, Lock, User, Shield, Code, GraduationCap, Check } from 'lucide-react';
-import SplitText from '../components/SplitText';
 import { useAuth } from '../contexts/AuthContext';
 
 const ROLE_CONFIG = [
@@ -162,13 +161,13 @@ const SignupPage = ({ showToast }) => {
       
       {/* Decorative Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-orange-500/10 to-amber-500/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-amber-500/10 to-orange-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-orange-500/8 to-amber-500/8 rounded-full blur-2xl"></div>
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr from-amber-500/8 to-orange-500/8 rounded-full blur-2xl"></div>
       </div>
 
       <div className="w-full max-w-lg relative z-10">
         {/* Card Container */}
-        <div className="glass-card rounded-3xl p-8 border border-[#c0c0c0] dark:border-[#8a8a8a] shadow-[0_0_32px_rgba(192,192,192,0.24)] dark:shadow-[0_0_32px_rgba(138,138,138,0.26)] animate-fadeInUp">
+        <div className="glass-card rounded-3xl p-8 border border-[#c0c0c0] dark:border-[#8a8a8a] shadow-[0_0_18px_rgba(192,192,192,0.16)] dark:shadow-[0_0_18px_rgba(138,138,138,0.18)]">
           
           {/* Header */}
           <div className="text-center mb-8">
@@ -188,12 +187,9 @@ const SignupPage = ({ showToast }) => {
               </span>
             </div>
 
-            <SplitText
-              text={step === 1 ? 'Select Your Role' : 'Create Account'}
-              className="text-4xl font-black text-gray-900 dark:text-white mb-3"
-              splitType="chars"
-              delay={30}
-            />
+            <h1 className="text-4xl font-black text-gray-900 dark:text-white mb-3">
+              {step === 1 ? 'Select Your Role' : 'Create Account'}
+            </h1>
             <p className="text-gray-600 dark:text-gray-400">
               {step === 1
                 ? isGoogleFlow
@@ -295,16 +291,17 @@ const SignupPage = ({ showToast }) => {
 
               {/* Username */}
               <div>
-                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
+                <label htmlFor="signup-username" className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
                   <User size={14} className="text-orange-500" />
                   Username
                 </label>
                 <input
+                  id="signup-username"
                   type="text"
                   required
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  className="w-full px-4 py-3.5 border border-[#c0c0c0] dark:border-[#8a8a8a] rounded-xl focus:border-orange-500 dark:focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-all duration-300 shadow-[0_0_18px_rgba(192,192,192,0.16)] dark:shadow-[0_0_18px_rgba(138,138,138,0.2)]"
+                  className="w-full px-4 py-3.5 border border-[#c0c0c0] dark:border-[#8a8a8a] rounded-xl focus:border-orange-500 dark:focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-200"
                   placeholder="john_doe"
                 />
                 {errors.username && (
@@ -316,32 +313,34 @@ const SignupPage = ({ showToast }) => {
 
               {/* Email */}
               <div>
-                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
+                <label htmlFor="signup-email" className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
                   <Mail size={14} className="text-orange-500" />
                   Email Address
                 </label>
                 <input
+                  id="signup-email"
                   type="email"
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-3.5 border border-[#c0c0c0] dark:border-[#8a8a8a] rounded-xl focus:border-orange-500 dark:focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-all duration-300 shadow-[0_0_18px_rgba(192,192,192,0.16)] dark:shadow-[0_0_18px_rgba(138,138,138,0.2)]"
+                  className="w-full px-4 py-3.5 border border-[#c0c0c0] dark:border-[#8a8a8a] rounded-xl focus:border-orange-500 dark:focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-200"
                   placeholder="you@example.com"
                 />
               </div>
 
               {/* Password */}
               <div>
-                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
+                <label htmlFor="signup-password" className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
                   <Lock size={14} className="text-orange-500" />
                   Password
                 </label>
                 <input
+                  id="signup-password"
                   type="password"
                   required
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full px-4 py-3.5 border border-[#c0c0c0] dark:border-[#8a8a8a] rounded-xl focus:border-orange-500 dark:focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-all duration-300 shadow-[0_0_18px_rgba(192,192,192,0.16)] dark:shadow-[0_0_18px_rgba(138,138,138,0.2)]"
+                  className="w-full px-4 py-3.5 border border-[#c0c0c0] dark:border-[#8a8a8a] rounded-xl focus:border-orange-500 dark:focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-200"
                   placeholder="••••••••"
                 />
                 {errors.password && (
@@ -353,16 +352,17 @@ const SignupPage = ({ showToast }) => {
 
               {/* Confirm Password */}
               <div>
-                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
+                <label htmlFor="signup-confirm-password" className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wide">
                   <Lock size={14} className="text-orange-500" />
                   Confirm Password
                 </label>
                 <input
+                  id="signup-confirm-password"
                   type="password"
                   required
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                  className="w-full px-4 py-3.5 border border-[#c0c0c0] dark:border-[#8a8a8a] rounded-xl focus:border-orange-500 dark:focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-all duration-300 shadow-[0_0_18px_rgba(192,192,192,0.16)] dark:shadow-[0_0_18px_rgba(138,138,138,0.2)]"
+                  className="w-full px-4 py-3.5 border border-[#c0c0c0] dark:border-[#8a8a8a] rounded-xl focus:border-orange-500 dark:focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-200"
                   placeholder="••••••••"
                 />
                 {errors.confirmPassword && (
@@ -423,22 +423,6 @@ const SignupPage = ({ showToast }) => {
         </div>
       </div>
 
-      <style jsx>{`
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-fadeInUp {
-          animation: fadeInUp 0.6s ease-out;
-        }
-      `}</style>
     </div>
   );
 };

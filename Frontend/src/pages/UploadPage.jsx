@@ -99,7 +99,7 @@ const UploadPage = ({ showToast }) => {
 
     const intervalId = setInterval(() => {
       setActiveTemplateSlide((prev) => (prev + 1) % 2);
-    }, 3500);
+    }, 4500);
 
     return () => clearInterval(intervalId);
   }, [uploadResult, isTemplatePaused]);
@@ -561,6 +561,8 @@ const UploadPage = ({ showToast }) => {
                     <button 
                       onClick={handleUpload}
                       disabled={uploading}
+                      aria-label={uploading ? 'Parsing student data' : 'Process and upload file'}
+                      aria-busy={uploading}
                       className="w-full h-14 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 disabled:from-gray-300 disabled:to-gray-400 text-white text-lg font-bold uppercase tracking-wide rounded-xl transition-all shadow-lg flex items-center justify-center gap-2"
                     >
                       {uploading ? (
@@ -594,10 +596,12 @@ const UploadPage = ({ showToast }) => {
 
             {/* Mode & Config */}
             <div className="space-y-4">
-              <label className="block text-sm font-bold uppercase tracking-widest text-gray-900 dark:text-white">Extraction Mode</label>
+              <fieldset>
+              <legend className="block text-sm font-bold uppercase tracking-widest text-gray-900 dark:text-white">Extraction Mode</legend>
               <div className="grid grid-cols-2 gap-4">
                 <button
                   onClick={() => setMode('1')}
+                  aria-pressed={mode === '1'}
                   className={`p-4 rounded-xl border-2 transition-all duration-200 text-left ${
                     mode === '1'
                       ? 'border-orange-500 dark:border-orange-400 bg-orange-50 dark:bg-orange-500/10 ring-2 ring-orange-200 dark:ring-orange-900'
@@ -609,6 +613,7 @@ const UploadPage = ({ showToast }) => {
                 </button>
                 <button
                   onClick={() => setMode('2')}
+                  aria-pressed={mode === '2'}
                   className={`p-4 rounded-xl border-2 transition-all duration-200 text-left ${
                     mode === '2'
                       ? 'border-orange-500 dark:border-orange-400 bg-orange-50 dark:bg-orange-500/10 ring-2 ring-orange-200 dark:ring-orange-900'
@@ -619,13 +624,15 @@ const UploadPage = ({ showToast }) => {
                   <div className="text-sm mt-1 text-gray-600 dark:text-gray-400">Name + Enrollment</div>
                 </button>
               </div>
+              </fieldset>
             </div>
 
             <div>
-              <label className="block text-sm font-bold uppercase tracking-widest text-gray-900 dark:text-white mb-2">
+              <label htmlFor="batchNameInput" className="block text-sm font-bold uppercase tracking-widest text-gray-900 dark:text-white mb-2">
                 Batch Name <span className="text-red-500">*</span>
               </label>
               <input
+                id="batchNameInput"
                 type="text"
                 value={batchName}
                 onChange={(e) => setBatchName(e.target.value)}
@@ -636,8 +643,9 @@ const UploadPage = ({ showToast }) => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-bold uppercase tracking-widest text-gray-900 dark:text-white mb-2">Name Column</label>
+                <label htmlFor="nameColumnInput" className="block text-sm font-bold uppercase tracking-widest text-gray-900 dark:text-white mb-2">Name Column</label>
                 <input
+                  id="nameColumnInput"
                   type="text"
                   value={nameColumn}
                   onChange={(e) => setNameColumn(e.target.value)}
@@ -646,8 +654,9 @@ const UploadPage = ({ showToast }) => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold uppercase tracking-widest text-gray-900 dark:text-white mb-2">Enrollment Column</label>
+                <label htmlFor="enrollmentColumnInput" className="block text-sm font-bold uppercase tracking-widest text-gray-900 dark:text-white mb-2">Enrollment Column</label>
                 <input
+                  id="enrollmentColumnInput"
                   type="text"
                   value={enrollmentColumn}
                   onChange={(e) => setEnrollmentColumn(e.target.value)}
@@ -695,7 +704,7 @@ const UploadPage = ({ showToast }) => {
 
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold uppercase tracking-widest text-gray-900 dark:text-white">Template Preview (Auto Slide)</h3>
-                <div className="text-[11px] font-semibold tracking-wide text-gray-600 dark:text-gray-400">Every 3.5s</div>
+                <div className="text-[11px] font-semibold tracking-wide text-gray-600 dark:text-gray-400">Every 4.5s</div>
               </div>
 
               <div
@@ -712,7 +721,7 @@ const UploadPage = ({ showToast }) => {
                   <div className="min-w-full h-full">
                     <div className="rounded-2xl border-0 bg-transparent dark:bg-transparent overflow-hidden relative h-full flex flex-col">
                       <div className="relative overflow-hidden flex-1">
-                        <div className="absolute inset-0 pointer-events-none z-10 bg-gradient-to-br from-transparent via-white/26 to-white/70 dark:from-transparent dark:via-black/26 dark:to-black/70 blur-lg" />
+                        <div className="absolute inset-0 pointer-events-none z-10 bg-gradient-to-b from-white/10 via-transparent to-white/30 dark:from-black/10 dark:via-transparent dark:to-black/30" />
                         <div className="absolute left-0 top-0 bottom-0 w-24 pointer-events-none z-[12] bg-gradient-to-r from-white via-white/70 to-transparent dark:from-black dark:via-black/70 dark:to-transparent" />
                         <div className="absolute right-0 top-0 bottom-0 w-24 pointer-events-none z-[12] bg-gradient-to-l from-white via-white/70 to-transparent dark:from-black dark:via-black/70 dark:to-transparent" />
                         <div className="absolute inset-x-0 bottom-0 h-20 pointer-events-none z-[11] bg-gradient-to-b from-transparent via-white/80 to-white dark:from-transparent dark:via-black/80 dark:to-black" />
@@ -775,7 +784,7 @@ const UploadPage = ({ showToast }) => {
                               </div>
                             ))}
 
-                            {Array.from({ length: 30 }).map((_, idx) => (
+                            {Array.from({ length: 10 }).map((_, idx) => (
                               <div key={`empty-f1-${idx}`} className="flex">
                                 <div className="w-10 h-11 bg-white dark:bg-white"></div>
                                 <div className="flex-1 h-11 bg-white dark:bg-white"></div>
@@ -786,7 +795,7 @@ const UploadPage = ({ showToast }) => {
                           </div>
                         </div>
 
-                        <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1 bottom-10 z-20 px-5 py-1.5 rounded-full bg-orange-50 dark:bg-orange-500/10 border-2 border-orange-500 dark:border-orange-400 ring-2 ring-orange-200 dark:ring-orange-900 backdrop-blur-lg shadow-xl">
+                        <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1 bottom-10 z-20 px-5 py-1.5 rounded-full bg-orange-50 dark:bg-orange-500/10 border-2 border-orange-500 dark:border-orange-400 ring-2 ring-orange-200 dark:ring-orange-900 shadow-xl">
                           <p className="text-sm md:text-base font-black tracking-wider text-gray-900 dark:text-white whitespace-nowrap">FORMAT 1 — Enrollment Only</p>
                         </div>
                       </div>
@@ -797,7 +806,7 @@ const UploadPage = ({ showToast }) => {
                   <div className="min-w-full h-full">
                     <div className="rounded-2xl border-0 bg-transparent dark:bg-transparent overflow-hidden relative h-full flex flex-col">
                       <div className="relative overflow-hidden flex-1">
-                        <div className="absolute inset-0 pointer-events-none z-10 bg-gradient-to-br from-transparent via-white/26 to-white/70 dark:from-transparent dark:via-black/26 dark:to-black/70 blur-lg" />
+                        <div className="absolute inset-0 pointer-events-none z-10 bg-gradient-to-b from-white/10 via-transparent to-white/30 dark:from-black/10 dark:via-transparent dark:to-black/30" />
                         <div className="absolute left-0 top-0 bottom-0 w-24 pointer-events-none z-[12] bg-gradient-to-r from-white via-white/70 to-transparent dark:from-black dark:via-black/70 dark:to-transparent" />
                         <div className="absolute right-0 top-0 bottom-0 w-24 pointer-events-none z-[12] bg-gradient-to-l from-white via-white/70 to-transparent dark:from-black dark:via-black/70 dark:to-transparent" />
                         <div className="absolute inset-x-0 bottom-0 h-20 pointer-events-none z-[11] bg-gradient-to-b from-transparent via-white/80 to-white dark:from-transparent dark:via-black/80 dark:to-black" />
@@ -868,7 +877,7 @@ const UploadPage = ({ showToast }) => {
                               </div>
                             ))}
 
-                            {Array.from({ length: 30 }).map((_, idx) => (
+                            {Array.from({ length: 10 }).map((_, idx) => (
                               <div key={`empty-f2-${idx}`} className="flex">
                                 <div className="w-10 h-11 bg-white dark:bg-white"></div>
                                 <div className="flex-1 h-11 bg-white dark:bg-white"></div>
@@ -879,7 +888,7 @@ const UploadPage = ({ showToast }) => {
                           </div>
                         </div>
 
-                        <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1 bottom-10 z-20 px-5 py-1.5 rounded-full bg-orange-50 dark:bg-orange-500/10 border-2 border-orange-500 dark:border-orange-400 ring-2 ring-orange-200 dark:ring-orange-900 backdrop-blur-lg shadow-xl">
+                        <div className="absolute left-1/2 -translate-x-1/2 -translate-y-1 bottom-10 z-20 px-5 py-1.5 rounded-full bg-orange-50 dark:bg-orange-500/10 border-2 border-orange-500 dark:border-orange-400 ring-2 ring-orange-200 dark:ring-orange-900 shadow-xl">
                           <p className="text-sm md:text-base font-black tracking-wider text-gray-900 dark:text-white whitespace-nowrap">FORMAT 2 — Name + Enrollment + Department</p>
                         </div>
                       </div>

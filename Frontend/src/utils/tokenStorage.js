@@ -82,7 +82,6 @@ export function migrateFromLocalStorage() {
     if (lsUser) {
       sessionStorage.setItem(USER_KEY, lsUser);
     }
-    console.log('🔄 Migrated auth from localStorage to sessionStorage');
   }
   
   // Clean up localStorage auth keys (keep darkMode there - it's meant to be shared)
