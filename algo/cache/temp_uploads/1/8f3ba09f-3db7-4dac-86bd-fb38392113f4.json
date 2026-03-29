@@ -1,1 +1,0 @@
-{"batch_id": "8f3ba09f-3db7-4dac-86bd-fb38392113f4", "batch_name": "CSE", "batch_color": "#FEF08A", "source_filename": "batch1.csv", "data": {"CSE": [{"name": "Alice Smith", "enrollmentNo": "E001", "department": ""}, {"name": "Bob Jones", "enrollmentNo": "E002", "department": ""}]}, "rows_extracted": 2}

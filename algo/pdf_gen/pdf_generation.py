@@ -161,22 +161,21 @@ def process_seating_data(json_data):
             prefixes = set(extract_branch_prefix(r) for r in sorted_rolls)
             range_info['is_onwards'] = len(prefixes) > 1
     
-    # Extract branch information with year from batches data
+    # Extract branch information with year and degree from batches data
     batches_data = json_data.get('batches', {})
-    branch_year_combos = set()  # e.g., ("CS", "2024"), ("CS", "2025")
-    degrees = set()
+    deg_branch_year_combos = set()  # e.g., ("B.Tech", "CS", "2024"), ("M.Tech", "CS", "2023")
     
     for batch_label, batch_info in batches_data.items():
         info = batch_info.get('info', {})
-        if info.get('branch') and info.get('joining_year'):
-            branch_year_combos.add((info['branch'], info['joining_year']))
-        if info.get('degree'):
-            degrees.add(info['degree'])
+        if info.get('branch') and info.get('joining_year') and info.get('degree'):
+            deg_branch_year_combos.add((info['degree'], info['branch'], info['joining_year']))
+        elif info.get('branch') and info.get('joining_year'):
+             # Fallback if somehow degree is missing but we know it's a branch
+             deg_branch_year_combos.add(("B.Tech", info['branch'], info['joining_year']))
     
     # Store branch-year info in summary
     summary['branch_year_info'] = {
-        'branch_year_combos': sorted(list(branch_year_combos)),
-        'degrees': sorted(list(degrees))
+        'deg_branch_year_combos': sorted(list(deg_branch_year_combos))
     }
     
     return matrix, summary
@@ -419,10 +418,9 @@ def create_seating_pdf(filename="algo/pdf_gen/seat_plan_generated/seating_plan.p
     current_year = int(template_config.get('current_year', datetime.now().year))
     
     branch_year_info = summary_stats.get('branch_year_info', {})
-    branch_year_combos = branch_year_info.get('branch_year_combos', [])
-    degrees = branch_year_info.get('degrees', [])
+    deg_branch_year_combos = branch_year_info.get('deg_branch_year_combos', [])
     
-    if branch_year_combos and degrees:
+    if deg_branch_year_combos:
         # Branch code expansion mapping: CS -> CSE, CD -> CSD, etc.
         branch_expansion = {
             'CS': 'CSE',
@@ -434,29 +432,34 @@ def create_seating_pdf(filename="algo/pdf_gen/seat_plan_generated/seating_plan.p
             'CE': 'CE'
         }
         
-        # Group branches by year
-        year_to_branches = {}  # {1: ['CSE', 'CSD'], 2: ['CSE', 'CSD']}
+        # Group by degree -> year -> branches
+        # e.g. { 'B.Tech': { 1: ['CSE', 'CSD'] }, 'M.Tech': { 1: ['CSE'] } }
+        degree_groups = {}
         
-        for branch_code, joining_year in branch_year_combos:
+        for degree, branch_code, joining_year in deg_branch_year_combos:
             expanded_branch = branch_expansion.get(branch_code, branch_code)
             
             # Calculate year: max(1, current_year - joining_year)
             year_diff = current_year - int(joining_year)
             year = 1 if year_diff <= 0 else year_diff
             
-            if year not in year_to_branches:
-                year_to_branches[year] = []
-            year_to_branches[year].append(expanded_branch)
+            if degree not in degree_groups:
+                degree_groups[degree] = {}
+            if year not in degree_groups[degree]:
+                degree_groups[degree][year] = set()
+            degree_groups[degree][year].add(expanded_branch)
         
-        # Build grouped branch-year strings: [CSE & CSD - 1yr] & [CSE & CSD - 2yr]
-        year_groups = []
-        for year in sorted(year_to_branches.keys()):
-            branches_list = sorted(year_to_branches[year])
-            branches_str = ' & '.join(branches_list)
-            year_groups.append(f"[{branches_str} - {year}yr]")
-        
-        # Format: "Branch: B.Tech([CSE & CSD - 1yr] & [CSE & CSD - 2yr])"
-        branch_text = f"Branch: {degrees[0]}({' & '.join(year_groups)})"
+        degree_strings = []
+        for degree in sorted(degree_groups.keys()):
+            year_groups = []
+            for year in sorted(degree_groups[degree].keys()):
+                branches_list = sorted(list(degree_groups[degree][year]))
+                branches_str = ' & '.join(branches_list)
+                year_groups.append(f"[{branches_str} - {year}yr]")
+            # Format: B.Tech([CSE & CSD - 1yr] & [CSE - 2yr])
+            degree_strings.append(f"{degree}({' & '.join(year_groups)})")
+            
+        branch_text = f"Branch: {'  '.join(degree_strings)}"
     else:
         # Fallback to template if no branch info available
         branch_text = template_config.get('branch_text', 'Branch: N/A')

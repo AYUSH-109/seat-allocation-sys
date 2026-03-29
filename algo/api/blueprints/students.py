@@ -27,6 +27,7 @@ def upload_students():
         file = request.files.get('file')
         mode = int(request.form.get('mode', 2))
         batch_name = request.form.get('batch_name', 'Default')
+        semester_name = request.form.get('semester_name', 'I')
         name_col = request.form.get('nameColumn')
         enrollment_col = request.form.get('enrollmentColumn')
         
@@ -68,6 +69,7 @@ def upload_students():
             json.dump({
                 'batch_id': parse_result.batch_id,
                 'batch_name': parse_result.batch_name,
+                'semester_name': semester_name,
                 'batch_color': parse_result.batch_color,
                 'source_filename': file.filename,
                 'data': parse_result.data,
@@ -133,6 +135,7 @@ def commit_upload():
             parse_data = json.load(f)
             
         batch_name = parse_data['batch_name']
+        semester_name = parse_data.get('semester_name', 'I')
         batch_color = parse_data.get('batch_color', '#BFDBFE')
         filename = parse_data.get('source_filename', 'uploaded_file')
         students_raw = parse_data['data'].get(batch_name, [])
@@ -143,9 +146,9 @@ def commit_upload():
         try:
             # 1. Create upload record
             cur.execute("""
-                INSERT INTO uploads (session_id, batch_id, batch_name, original_filename, file_size, batch_color)
-                VALUES (?, ?, ?, ?, 0, ?)
-            """, (session_id, batch_id, batch_name, filename, batch_color))
+                INSERT INTO uploads (session_id, batch_id, batch_name, semester, original_filename, file_size, batch_color)
+                VALUES (?, ?, ?, ?, ?, 0, ?)
+            """, (session_id, batch_id, batch_name, semester_name, filename, batch_color))
             
             upload_id = cur.lastrowid
             

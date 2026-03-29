@@ -24,17 +24,6 @@ logger = logging.getLogger(__name__)
 _SECS_PER_DAY = 86_400
 
 
-def _sync_queue_maintenance_once(days: int = 7) -> int:
-    """
-    Remove old 'DONE' or 'FAILED' jobs from the sqlite sync_queue 
-    that are older than `days`.  Defaults to 7 days.
-    """
-    from . import sync_queue
-    retention_sec = getattr(config, "SYNC_DONE_RETENTION_SECONDS", days * _SECS_PER_DAY)
-    cutoff_time = int(time.time() - retention_sec)
-    return sync_queue.delete_old_jobs(cutoff_time)
-
-
 def _cleanup_once(cache) -> int:
     """
     Delete PLAN-*.json files in DATA_DIR that are older than

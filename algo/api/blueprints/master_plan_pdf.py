@@ -95,6 +95,7 @@ def _extract_master_plan_data(snapshot: dict) -> list:
             branch_code = info.get('branch', '??')
             joining_year = info.get('joining_year', '2025')
             degree = info.get('degree', 'B.Tech')
+            semester = info.get('semester', 'I')
 
             students = batch_data.get('students', [])
             if not students:
@@ -122,10 +123,6 @@ def _extract_master_plan_data(snapshot: dict) -> list:
             to_roll = 'Onwards' if is_onwards else rolls[-1]
 
             branch_display = BRANCH_MAP.get(branch_code, branch_code)
-
-            # Semester: compute from joining_year
-            # (will be displayed; user can override via template if needed)
-            semester = 'I'  # default for first-year
 
             key = (branch_display, joining_year)
             if key not in branch_rows:

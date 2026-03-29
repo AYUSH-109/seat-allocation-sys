@@ -30,7 +30,7 @@ class StudentQueries:
         """Get all students associated with a session (via uploads)"""
         db = get_db()
         cursor = db.execute("""
-            SELECT s.* 
+            SELECT s.*, u.semester 
             FROM students s
             JOIN uploads u ON s.upload_id = u.id
             WHERE u.session_id = ?
@@ -97,7 +97,7 @@ class StudentQueries:
         """Get students not yet allocated in this session."""
         db = get_db()
         cursor = db.execute("""
-            SELECT DISTINCT s.id, s.enrollment, s.name, s.batch_name, s.batch_id, s.batch_color
+            SELECT DISTINCT s.id, s.enrollment, s.name, s.batch_name, s.batch_id, s.batch_color, u.semester
             FROM students s
             JOIN uploads u ON s.upload_id = u.id
             WHERE u.session_id = ?

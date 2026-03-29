@@ -562,57 +562,61 @@ export default function ClassroomPage({ showToast }) {
                   </div>
                 </div>
 
-                {/* Canvas */}
-                <div className="flex-1 overflow-auto p-8 flex items-center justify-center bg-gray-50 dark:bg-[#050505]">
-                  <div className="relative">
-                    <div className="absolute -top-16 left-0 right-0 flex justify-center">
-                      <div className="bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest text-white flex items-center gap-2 shadow-lg">
+                {/* Canvas with Floating Header */}
+                <div className="flex-1 overflow-auto overflow-x-auto p-8 bg-gray-50 dark:bg-[#050505] relative">
+                  <div className="flex flex-col w-full gap-4">
+                    {/* Floating Transparent Header */}
+                    <div className="absolute top-0 left-1/2 transform -translate-x-1/2 z-50 flex justify-center pt-4 pointer-events-none">
+                      <div className="bg-gradient-to-r from-orange-500 to-amber-500 opacity-90 backdrop-blur-sm px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest text-white flex items-center gap-2 shadow-lg pointer-events-auto">
                         <Monitor size={16}/> Front of Classroom
                       </div>
                     </div>
 
-                    <div 
-                      className="grid gap-2 transition-all duration-300" 
-                      style={{ 
-                        gridTemplateColumns: `repeat(${roomData.cols}, minmax(45px, 1fr))`, 
-                        width: 'fit-content' 
-                      }}
-                    >
-                      {Array.from({ length: roomData.rows * roomData.cols }).map((_, idx) => {
-                        const r = Math.floor(idx / roomData.cols) + 1;
-                        const c = (idx % roomData.cols) + 1;
-                        const isBroken = brokenSeatsList.includes(`${r}-${c}`);
-                        return (
-                          <motion.button
-                            key={idx}
-                            initial={{ scale: 0, opacity: 0 }} 
-                            animate={{ scale: 1, opacity: 1 }} 
-                            transition={{ delay: idx * 0.002, type: "spring" }}
-                            onClick={() => toggleSeat(idx)} 
-                            className={`h-12 w-12 rounded-xl flex items-center justify-center text-xs font-bold transition-all duration-200 border-2 shadow-sm ${
-                              isBroken 
-                                ? "bg-red-50 dark:bg-red-900/20 border-red-500 dark:border-red-600 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 shadow-red-500/20" 
-                                : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 hover:border-orange-500 dark:hover:border-orange-400 hover:text-orange-500 hover:-translate-y-1"
-                            }`}
-                            title={`Row ${r}, Col ${c}${isBroken ? ' (Broken)' : ''}`}
-                          >
-                            {isBroken ? <X size={18} className="font-black"/> : <span className="font-mono">{r}-{c}</span>}
-                          </motion.button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Legend */}
-                    <div className="flex gap-4 justify-center mt-8 text-xs">
-                      <div className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-                        <div className="w-4 h-4 rounded bg-white border-2 border-gray-200"></div>
-                        <span className="font-medium text-gray-600 dark:text-gray-400">Available</span>
+                    {/* Grid Container */}
+                    <div className="flex flex-col items-center gap-8 mt-16">
+                      <div 
+                        className="grid gap-2 transition-all duration-300" 
+                        style={{ 
+                          gridTemplateColumns: `repeat(${roomData.cols}, minmax(45px, auto))`, 
+                          width: 'auto' 
+                        }}
+                      >
+                        {Array.from({ length: roomData.rows * roomData.cols }).map((_, idx) => {
+                          const r = Math.floor(idx / roomData.cols) + 1;
+                          const c = (idx % roomData.cols) + 1;
+                          const isBroken = brokenSeatsList.includes(`${r}-${c}`);
+                          return (
+                            <motion.button
+                              key={idx}
+                              initial={{ scale: 0, opacity: 0 }} 
+                              animate={{ scale: 1, opacity: 1 }} 
+                              transition={{ delay: idx * 0.002, type: "spring" }}
+                              onClick={() => toggleSeat(idx)} 
+                              className={`h-12 w-12 rounded-xl flex items-center justify-center text-xs font-bold transition-all duration-200 border-2 shadow-sm ${
+                                isBroken 
+                                  ? "bg-red-50 dark:bg-red-900/20 border-red-500 dark:border-red-600 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 shadow-red-500/20" 
+                                  : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 hover:border-orange-500 dark:hover:border-orange-400 hover:text-orange-500 hover:-translate-y-1"
+                              }`}
+                              title={`Row ${r}, Col ${c}${isBroken ? ' (Broken)' : ''}`}
+                            >
+                              {isBroken ? <X size={18} className="font-black"/> : <span className="font-mono">{r}-{c}</span>}
+                            </motion.button>
+                          );
+                        })}
                       </div>
-                      <div className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-                        <div className="w-4 h-4 rounded bg-red-50 border-2 border-red-500 flex items-center justify-center">
-                          <X size={10} className="text-red-500"/>
+
+                      {/* Legend */}
+                      <div className="flex gap-4 justify-center text-xs">
+                        <div className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                          <div className="w-4 h-4 rounded bg-white border-2 border-gray-200"></div>
+                          <span className="font-medium text-gray-600 dark:text-gray-400">Available</span>
                         </div>
-                        <span className="font-medium text-gray-600 dark:text-gray-400">Broken</span>
+                        <div className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+                          <div className="w-4 h-4 rounded bg-red-50 border-2 border-red-500 flex items-center justify-center">
+                            <X size={10} className="text-red-500"/>
+                          </div>
+                          <span className="font-medium text-gray-600 dark:text-gray-400">Broken</span>
+                        </div>
                       </div>
                     </div>
                   </div>

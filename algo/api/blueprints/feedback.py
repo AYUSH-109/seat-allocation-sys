@@ -165,3 +165,74 @@ def get_all_feedback_admin():
     except Exception as e:
         logger.error(f"Get all feedback error: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
+
+@feedback_bp.route("/api/feedback/<int:feedback_id>/status", methods=["PUT"])
+@token_required
+def update_feedback_status(feedback_id):
+    """
+    Update feedback status (Admin only).
+    """
+    try:
+        user_role = getattr(request, 'user_role', None)
+        
+        if user_role not in ('admin', 'developer', 'ADMIN'):
+            return jsonify({"error": "Admin access required"}), 403
+        
+        data = request.get_json()
+        status = data.get('status')
+        admin_response = data.get('admin_response', '')
+        
+        if not status:
+            return jsonify({"error": "Status is required"}), 400
+        
+        if status not in ('pending', 'resolved', 'rejected'):
+            return jsonify({"error": "Invalid status"}), 400
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Update feedback status
+        resolved_at = None
+        if status == 'resolved':
+            resolved_at = datetime.now().isoformat()
+        
+        cur.execute("""
+            UPDATE feedback
+            SET status = ?, admin_response = ?, resolved_at = ?
+            WHERE id = ?
+        """, (status, admin_response, resolved_at, feedback_id))
+        
+        conn.commit()
+        
+        # Fetch updated feedback
+        cur.execute("""
+            SELECT 
+                f.id, f.user_id, f.issue_type, f.priority, f.description,
+                f.feature_suggestion, f.additional_info, f.file_name,
+                f.status, f.created_at, f.resolved_at, f.admin_response,
+                u.username, u.email
+            FROM feedback f
+            LEFT JOIN users u ON f.user_id = u.id
+            WHERE f.id = ?
+        """, (feedback_id,))
+        
+        row = cur.fetchone()
+        conn.close()
+        
+        if not row:
+            return jsonify({"error": "Feedback not found"}), 404
+        
+        feedback_dict = dict(row)
+        
+        logger.info(f"🔄 Feedback status updated: ID={feedback_id}, Status={status}")
+        
+        return jsonify({
+            "success": True,
+            "message": "Feedback status updated successfully",
+            "feedback": feedback_dict
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Update feedback status error: {str(e)}")
+        return jsonify({"error": str(e)}), 500

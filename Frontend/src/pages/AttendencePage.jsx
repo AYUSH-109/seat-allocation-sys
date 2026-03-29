@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   UserCheck, Eye, X, Loader2,
   BookOpen, FileDown, Building2, ArrowLeft, Users,
-  UploadCloud, FileText, CheckCircle, AlertCircle, Archive, ChevronDown
+  UploadCloud, FileText, CheckCircle, AlertCircle, Archive, ChevronDown, FolderArchive
 } from 'lucide-react';
 
 const FORMAT_SLIDES = [
@@ -264,6 +264,50 @@ const buildCompleteMetadata = () => {
   };
 };
 
+  const handleZipHierarchy = async () => {
+    setActionLoading('zip-hierarchy');
+    try {
+      const token = getToken();
+      const completeMetadata = buildCompleteMetadata();
+      
+      const response = await fetch('/api/generate-pdf/hierarchy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
+        body: JSON.stringify({
+          plan_id: planId,
+          metadata: completeMetadata
+        })
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      if (blob.size === 0) throw new Error('Empty response from server');
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Plan_${planId}_${Date.now()}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      if (showToast) showToast('✅ Zip hierarchy downloaded', 'success');
+    } catch (err) {
+      console.error('❌ Zip hierarchy error:', err);
+      if (showToast) showToast(err.message, 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleDownloadSingle = async (batchLabel) => {
     if (!metadata.course_name || !metadata.course_code) {
       if (showToast) showToast("Please enter Course Name and Code", "warning");
@@ -427,6 +471,124 @@ const buildCompleteMetadata = () => {
     );
   }
 
+  // ── Zip Hierarchy Mode ──────────────────────────────────────────────────
+  if (source === 'zip-hierarchy') {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-[#050505] py-12 px-4 sm:px-6">
+        <div className="max-w-4xl mx-auto space-y-8">
+          
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 dark:border-gray-800 pb-8">
+            <div>
+              <h1 className="text-4xl font-black text-gray-900 dark:text-white uppercase tracking-tighter flex items-center gap-3">
+                <FolderArchive className="text-violet-500" size={36} />
+                Generate Zip Hierarchy
+              </h1>
+              <p className="text-gray-500 font-medium mt-2">
+                Plan: <span className="text-orange-500 font-bold">{planId}</span>
+              </p>
+            </div>
+            <button 
+              onClick={() => navigate('/create-plan')}
+              className="text-sm font-bold text-gray-500 hover:text-orange-500 transition-colors flex items-center gap-2"
+            >
+              <ArrowLeft size={16} />
+              Back to Plans
+            </button>
+          </div>
+
+          {/* Metadata Sections */}
+          <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 border-2 border-gray-100 dark:border-gray-700 shadow-xl">
+            <h2 className="text-xs font-black text-emerald-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+              <UserCheck size={16}/> Attendance Sheet Configuration
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold uppercase text-gray-400 ml-1">Department Name</label>
+                <input 
+                  className="w-full h-12 px-4 rounded-xl border-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 dark:text-white focus:border-emerald-500 outline-none transition-all"
+                  value={metadata.attendance_dept_name}
+                  onChange={e => setMetadata({...metadata, attendance_dept_name: e.target.value})}
+                  placeholder="e.g., Computer Science and Engineering"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold uppercase text-gray-400 ml-1">Academic Year</label>
+                <input 
+                  type="number"
+                  className="w-full h-12 px-4 rounded-xl border-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 dark:text-white focus:border-emerald-500 outline-none transition-all"
+                  value={metadata.attendance_year}
+                  onChange={e => setMetadata({...metadata, attendance_year: e.target.value})}
+                  placeholder="e.g., 2024"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold uppercase text-gray-400 ml-1">Examination Heading</label>
+                <input 
+                  className="w-full h-12 px-4 rounded-xl border-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 dark:text-white focus:border-emerald-500 outline-none transition-all"
+                  value={metadata.attendance_exam_heading}
+                  onChange={e => setMetadata({...metadata, attendance_exam_heading: e.target.value})}
+                  placeholder="e.g., SESSIONAL EXAMINATION"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold uppercase text-gray-400 ml-1">Banner Image Path (Optional)</label>
+                <input 
+                  className="w-full h-12 px-4 rounded-xl border-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 dark:text-white focus:border-emerald-500 outline-none transition-all"
+                  value={metadata.attendance_banner_path}
+                  onChange={e => setMetadata({...metadata, attendance_banner_path: e.target.value})}
+                  placeholder="Path to banner image"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Course Details */}
+          <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 border-2 border-gray-100 dark:border-gray-700 shadow-xl">
+            <h2 className="text-xs font-black text-orange-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+              <BookOpen size={16}/> Course Information
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold uppercase text-gray-400 ml-1">Course Name</label>
+                <input 
+                  placeholder="e.g., Data Structures"
+                  className="w-full h-12 px-4 rounded-xl border-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 dark:text-white focus:border-orange-500 outline-none transition-all"
+                  value={metadata.course_name}
+                  onChange={e => setMetadata({...metadata, course_name: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold uppercase text-gray-400 ml-1">Course Code</label>
+                <input 
+                  placeholder="e.g., CS-201"
+                  className="w-full h-12 px-4 rounded-xl border-2 border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 dark:text-white focus:border-orange-500 outline-none transition-all"
+                  value={metadata.course_code}
+                  onChange={e => setMetadata({...metadata, course_code: e.target.value})}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Generate Zip Button */}
+          <button
+            onClick={handleZipHierarchy}
+            disabled={actionLoading === 'zip-hierarchy'}
+            className="w-full py-4 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white rounded-2xl font-black uppercase tracking-widest text-sm flex items-center justify-center gap-3 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-purple-500/25"
+          >
+            {actionLoading === 'zip-hierarchy' ? (
+              <Loader2 className="animate-spin" size={20} />
+            ) : (
+              <FolderArchive size={20} />
+            )}
+            {actionLoading === 'zip-hierarchy' ? 'Generating ZIP...' : 'Generate & Download Zip Hierarchy'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Normal Attendance Control Mode ──────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#050505] py-12 px-4 sm:px-6">
       <div className="max-w-6xl mx-auto space-y-8">

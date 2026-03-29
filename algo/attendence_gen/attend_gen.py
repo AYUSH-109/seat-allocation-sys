@@ -159,21 +159,21 @@ def create_attendance_pdf(filename, student_list, batch_label, metadata, extract
         is_debarred = student.get('is_debarred', False)
         table_row_idx = i + 1  # +1 because row 0 is the header
 
-        sig_style = styles['Normal'].clone(f'SigCell_{i}')
+        ans_booklet_cell = "DU                           "
+        sig_cell = ""
+
         if is_debarred:
-            sig_style.textColor = colors.red
-            sig_style.fontName  = 'Times-Bold'
-            sig_cell = Paragraph('<b>DEBARRED</b>', sig_style)
+            ans_style = styles['Normal'].clone(f'AnsCell_{i}')
+            ans_style.alignment = 1  # Center alignment
+            ans_booklet_cell = Paragraph('DU&nbsp;&nbsp;&nbsp;<font color="red">DEBARRED</font>&nbsp;&nbsp;', ans_style)
             debarred_row_indices.append(table_row_idx)
-        else:
-            sig_cell = ''
 
         data.append([
             str(i + 1),
             student_name,
             student.get('roll_number', ''),
             student.get('paper_set', ''),
-            "DU                           ",
+            ans_booklet_cell,
             sig_cell
         ])
 
@@ -258,7 +258,7 @@ def process_and_generate_from_cache(plan_id, frontend_metadata=None):
     metadata = {
         "room_no": inputs.get('room_id', 'Manual'),
         "date": json_data.get('metadata', {}).get('last_updated', '').split('T')[0],
-        "course_name": "N/A", "course_code": "N/A", "exam_title": "ATTENDANCE SHEET", "year": "2025"
+        "course_name": "", "course_code": "", "exam_title": "ATTENDANCE SHEET", "year": "2025"
     }
     if frontend_metadata: metadata.update(frontend_metadata)
 

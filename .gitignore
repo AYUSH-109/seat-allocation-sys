@@ -1,0 +1,11 @@
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.db
+*.log
+
+# Application cache and temporary files
+algo/cache/
+temp_uploads/

@@ -8,3 +8,5 @@ google-auth-oauthlib==1.0.0
 google-auth-httplib2==0.2.0
 openpyxl
 requests>=2.31.0
+boto3>1.34.0
+# also setup the cloudflared in your system manually

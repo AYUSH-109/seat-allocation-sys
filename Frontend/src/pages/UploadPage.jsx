@@ -27,6 +27,7 @@ const UploadPage = ({ showToast }) => {
   const [file, setFile] = useState(null);
   const [mode, setMode] = useState('2');
   const [batchName, setBatchName] = useState('');
+  const [semesterName, setSemesterName] = useState(''); // Added field for Semester Name
   const [nameColumn, setNameColumn] = useState('');
   const [enrollmentColumn, setEnrollmentColumn] = useState('');
   
@@ -178,6 +179,7 @@ const UploadPage = ({ showToast }) => {
       formData.append('file', file);
       formData.append('mode', mode);
       formData.append('batch_name', batchName.trim());
+      formData.append('semester_name', semesterName.trim());
       
       if (hasActiveSession && session) {
         formData.append('session_id', session.session_id);
@@ -637,6 +639,19 @@ const UploadPage = ({ showToast }) => {
                 value={batchName}
                 onChange={(e) => setBatchName(e.target.value)}
                 placeholder="e.g., CS-A, ECE-2024"
+                className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold uppercase tracking-widest text-gray-900 dark:text-white mb-2">
+                Semester
+              </label>
+              <input
+                type="text"
+                value={semesterName}
+                onChange={(e) => setSemesterName(e.target.value)}
+                placeholder="e.g., I, II, III"
                 className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
               />
             </div>

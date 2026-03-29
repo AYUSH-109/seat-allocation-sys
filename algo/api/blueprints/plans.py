@@ -33,7 +33,7 @@ def get_recent_plans():
                 COUNT(DISTINCT a.classroom_id) as room_count
             FROM allocation_sessions s
             LEFT JOIN allocations a ON s.session_id = a.session_id
-            WHERE s.status != 'deleted' AND s.user_id = ?
+            WHERE s.status IN ('active', 'completed') AND s.user_id = ?
             GROUP BY s.session_id
             ORDER BY s.last_activity DESC
             LIMIT 20

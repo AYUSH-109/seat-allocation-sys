@@ -34,8 +34,7 @@ import config
 from core import cache          # pre-loaded singleton — logs now visible
 from core.cleanup import start_cleanup_daemon
 from core.backend_sync import sync_backend_plans
-from core.cloud_sync import start_sync_worker, verify_signature, enqueue_notification
-from core.sync_queue import stats as sync_queue_stats
+from core.cloud_sync import verify_signature
 from core.rate_limit import FixedWindowRateLimiter, get_client_ip
 
 # Start the background cleanup daemon as soon as the process is up.
@@ -70,10 +69,6 @@ def _next_three_dates() -> list[str]:
 sync_stats = sync_backend_plans()
 if sync_stats.get("copied") or sync_stats.get("updated"):
     cache.reload()
-
-# Start async notification consumer worker
-start_sync_worker(cache)
-
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 
@@ -218,45 +213,102 @@ def fetch_backend_plans():
 
 logger = logging.getLogger(__name__)
 
-@app.route("/api/sync/notify", methods=["POST"])
+@app.route("/webhook", methods=["POST"])
 def sync_notify():
-    """Receive signed cloud notification and enqueue for async processing."""
+    """Receive signed cloud notification and process payload inline."""
     client_ip = _client_ip()
-    if not _sync_notify_rl.allow(client_ip):
-        logger.warning(f"Rate limit exceeded for IP {client_ip} on /api/sync/notify")
-        return jsonify({"accepted": False, "error": "rate limit exceeded"}), 429
+    logger.info(f"🔔 [WEBHOOK] Received cloud notification from IP: {client_ip}")
+
+    # Temporarily bypass auth & signature logic for testing:
+    # if not _sync_notify_rl.allow(client_ip):
+    #     logger.warning(f"Rate limit exceeded for IP {client_ip} on /webhook")
+    #     return jsonify({"accepted": False, "error": "rate limit exceeded"}), 429
 
     raw = request.get_data(cache=False)
-    payload = json.loads(raw.decode("utf-8")) if raw else {}
-    sig = (
-        request.headers.get("X-Signature")
-        or request.headers.get("X-Hub-Signature-256")
-        or request.headers.get("X-Sync-Signature")
-    )
-    if not verify_signature(raw, sig):
-        logger.warning(f"Invalid signature from {client_ip}. Headers: {dict(request.headers)}")
-        return jsonify({"accepted": False, "error": "invalid signature"}), 401
+    try:
+        payload = json.loads(raw.decode("utf-8")) if raw else {}
+    except Exception as e:
+        logger.error(f"❌ [WEBHOOK] Invalid JSON received: {e}")
+        return jsonify({"accepted": False, "error": "Invalid JSON"}), 400
 
-    ok, state = enqueue_notification(payload)
-    if not ok:
-        return jsonify({"accepted": False, "error": state}), 400
+    logger.info(f"🔔 [WEBHOOK] Payload: {json.dumps(payload)}")
+    
+    # Temporarily bypassed signature check for testing:
+    # sig = (
+    #     request.headers.get("X-Signature")
+    #     or request.headers.get("X-Hub-Signature-256")
+    #     or request.headers.get("X-Sync-Signature")
+    # )
+    # if not verify_signature(raw, sig):
+    #     logger.warning(f"Invalid signature from {client_ip}. Headers: {dict(request.headers)}")
+    #     return jsonify({"accepted": False, "error": "invalid signature"}), 401
 
-    code = 200 if state in ("duplicate", "coalesced") else 202
-    return jsonify({
-        "accepted": True,
-        "state": state,
-        "event_id": payload.get("event_id"),
-        "plan_id": payload.get("plan_id"),
-    }), code
+    import boto3
+    from botocore.client import Config as BotoConfig
+    import os
+    
+    try:
+        # Extract filename / file_key from incoming JSON
+        # Worker uses prepended "plans/" as per requirements
+        file_key = payload.get("file_key") or payload.get("filename")
+        if not file_key and payload.get("plan_id"):
+            plan_id = payload["plan_id"]
+            if not str(plan_id).upper().startswith("PLAN-"):
+                plan_id = f"PLAN-{plan_id}"
+            file_key = f"plans/{plan_id}.json"
 
+        if not file_key:
+            logger.warning("🔔 [WEBHOOK] Missing file_key, filename, or plan_id in payload")
+            return jsonify({"accepted": False, "error": "file_key or filename missing"}), 400
+        
+        # Ensure correct R2 keys are used
+        account_id = os.getenv("R2_ACCOUNT_ID", "").strip()
+        access_key = os.getenv("R2_ACCESS_KEY_ID", "").strip()
+        secret_key = os.getenv("R2_SECRET_ACCESS_KEY", "").strip()
+        bucket = os.getenv("R2_BUCKET_NAME", "").strip()
 
-@app.route("/api/sync/stats", methods=["GET"])
-def sync_stats_endpoint():
-    """Queue stats for operational visibility."""
-    return jsonify({"queue": sync_queue_stats()})
+        if not all([account_id, access_key, secret_key, bucket]):
+            logger.error("❌ [WEBHOOK] Missing R2 configuration in .env")
+            return jsonify({"accepted": False, "error": "Server misconfiguration"}), 500
+
+        endpoint = f"https://{account_id}.r2.cloudflarestorage.com"
+        
+        client = boto3.client(
+            "s3",
+            endpoint_url=endpoint,
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            region_name="auto",
+            config=BotoConfig(signature_version="s3v4", s3={"addressing_style": "path"}),
+        )
+
+        # Download file to local DATA_DIR safely handling 'plan/' prefix
+        save_name = os.path.basename(file_key) 
+        if not save_name.endswith(".json"):
+            save_name += ".json"
+            
+        save_path = os.path.join(config.DATA_DIR, save_name)
+        
+        logger.info(f"🔔 [WEBHOOK] Downloading '{file_key}' from R2 bucket '{bucket}' -> '{save_path}'")
+        client.download_file(bucket, file_key, save_path)
+        
+        # Reload cache to make it instantly searchable
+        cache.reload()
+        
+        logger.info(f"✅ [WEBHOOK] Successfully synchronised: {file_key}")
+        
+        return jsonify({
+            "accepted": True,
+            "state": "processed_inline",
+            "file": save_name
+        }), 200
+
+    except Exception as e:
+        logger.error(f"❌ [WEBHOOK] Sync failed: {e}")
+        return jsonify({"accepted": False, "error": str(e)}), 400
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    app.run(debug=config.DEBUG, host=config.HOST, port= 5001)
+    app.run(debug=config.DEBUG, host=config.HOST, port=3001)

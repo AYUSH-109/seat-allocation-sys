@@ -365,18 +365,20 @@ class SeatingAlgorithm:
                         if isinstance(data_item, dict):
                             rn = data_item.get('roll', '')
                             st_name = data_item.get('name', '')
+                            semester = data_item.get('semester', 'I')
                             # Strict check: roll should not be empty if real data is expected
                             if not rn:
                                 self.init_errors.append(f"Batch {b} student record missing roll number")
                         else:
                             rn = str(data_item)
                             st_name = ""
+                            semester = "I"
                             # Check if it looks like a real enrollment (not just a single digit)
                             if self.batch_roll_numbers and not re.search(r'[A-Z]', rn):
                                 self.init_errors.append(f"Batch {b} using numeric fallback instead of enrollment string: {rn}")
                     
                     if rn:
-                        column_students.append({'roll': rn, 'name': st_name})
+                        column_students.append({'roll': rn, 'name': st_name, 'semester': semester})
                         batch_allocated[b] += 1
 
                 # Randomize within the column if feature is active
@@ -402,6 +404,7 @@ class SeatingAlgorithm:
                             block=self._get_block_index(col),
                             roll_number=student['roll'],
                             student_name=student['name'],
+                            semester=student.get('semester', 'I'),
                             color=self.batch_colors.get(b, "#E5E7EB"),
                         )
                         student_idx += 1
@@ -862,6 +865,7 @@ class SeatingAlgorithm:
                         # This is now your enrollment number when batch_roll_numbers is used
                         "roll_number": seat.roll_number,
                         "student_name": seat.student_name,
+                        "semester": seat.semester,
                         "is_broken": False,
                         "is_unallocated": is_unallocated,
                         "display": display_value,

@@ -269,6 +269,7 @@ def ensure_demo_db():
                 batch_id TEXT UNIQUE NOT NULL,
                 batch_name TEXT NOT NULL,
                 batch_color TEXT DEFAULT '#BFDBFE',
+                semester TEXT,
                 original_filename TEXT,
                 file_size INTEGER,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -433,6 +434,7 @@ def ensure_demo_db():
         # ====================================================================
         migration_queries = [
             ("ALTER TABLE uploads ADD COLUMN batch_color TEXT DEFAULT '#BFDBFE'", "uploads.batch_color"),
+            ("ALTER TABLE uploads ADD COLUMN semester TEXT", "uploads.semester"),
             ("ALTER TABLE students ADD COLUMN batch_color TEXT DEFAULT '#BFDBFE'", "students.batch_color"),
             ("ALTER TABLE students ADD COLUMN department TEXT", "students.department"),
             ("ALTER TABLE allocation_sessions ADD COLUMN user_id INTEGER DEFAULT 1", "sessions.user_id"),

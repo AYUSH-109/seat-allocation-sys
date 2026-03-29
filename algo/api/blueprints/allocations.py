@@ -164,7 +164,8 @@ def generate_seating():
                 
                 batch_groups[batch_name]['students'].append({
                     'roll': student.get('enrollment'),
-                    'name': student.get('name', '')
+                    'name': student.get('name', ''),
+                    'semester': student.get('semester', 'I')
                 })
             
             # Convert to algorithm format (1-indexed)

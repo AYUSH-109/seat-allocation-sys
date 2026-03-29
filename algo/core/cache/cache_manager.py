@@ -103,6 +103,8 @@ class CacheManager:
         all_info = []
         for student in sample:
             info = self._parse_enrollment(student.get('roll_number', ''))
+            if 'semester' in student:
+                info['semester'] = student['semester']
             branches.append(info.get('branch', 'N/A'))
             all_info.append(info)
         
