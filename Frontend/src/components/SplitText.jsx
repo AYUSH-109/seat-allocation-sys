@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { memo, useEffect, useMemo, useState } from 'react';
 
 const SplitText = ({
   text = '',
@@ -13,13 +13,15 @@ const SplitText = ({
 }) => {
   const [mounted, setMounted] = useState(false);
 
+  const letters = useMemo(() => {
+    return splitType === 'words'
+      ? text.split(/(\s+)/).filter(Boolean)
+      : Array.from(text);
+  }, [text, splitType]);
+
   useEffect(() => {
     let finishTimer;
     setMounted(true);
-
-    const letters = splitType === 'words'
-      ? text.split(/(\s+)/).filter(Boolean) // keep spaces as tokens
-      : Array.from(text);
 
     const total = letters.length;
     const lastDelay = delay * (total - 1);
@@ -30,11 +32,7 @@ const SplitText = ({
     }, totalMs + 50);
 
     return () => clearTimeout(finishTimer);
-  }, [text, delay, duration, splitType, onLetterAnimationComplete]);
-
-  const letters = splitType === 'words'
-    ? text.split(/(\s+)/).filter(Boolean)
-    : Array.from(text);
+  }, [letters.length, delay, duration, onLetterAnimationComplete]);
 
   return (
     <div className={className} aria-hidden={false} style={{ paddingBottom: '0.15em' }}>
@@ -73,4 +71,4 @@ const SplitText = ({
   );
 };
 
-export default SplitText;
+export default memo(SplitText);

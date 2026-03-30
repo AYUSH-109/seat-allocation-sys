@@ -1089,3 +1089,268 @@
 2026-03-30 00:22:55,945 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 00:22:55] "GET /api/classrooms HTTP/1.1" 200 -
 2026-03-30 00:22:55,963 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 00:22:55] "GET /api/sessions/active HTTP/1.1" 200 -
 2026-03-30 00:22:55,989 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 00:22:55] "GET /api/classrooms HTTP/1.1" 200 -
+2026-03-30 00:29:13,589 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\exam-seat-locator\\core\\sync_queue.py', reloading
+2026-03-30 00:29:13,592 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\ExamOps\\backend\\main.py', reloading
+2026-03-30 00:29:13,593 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\ExamOps\\backend\\main.py', reloading
+2026-03-30 00:29:13,594 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\ExamOps\\backend\\main.py', reloading
+2026-03-30 00:29:13,604 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\api\\blueprints\\allocations.py', reloading
+2026-03-30 00:29:13,605 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\api\\blueprints\\allocations.py', reloading
+2026-03-30 00:29:13,605 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\api\\blueprints\\allocations.py', reloading
+2026-03-30 00:29:13,606 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\api\\blueprints\\allocations.py', reloading
+2026-03-30 00:29:13,606 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\api\\blueprints\\feedback.py', reloading
+2026-03-30 00:29:13,607 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\api\\blueprints\\feedback.py', reloading
+2026-03-30 00:29:13,608 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\api\\blueprints\\feedback.py', reloading
+2026-03-30 00:29:13,608 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\api\\blueprints\\master_plan_pdf.py', reloading
+2026-03-30 00:29:13,609 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\api\\blueprints\\master_plan_pdf.py', reloading
+2026-03-30 00:29:13,609 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\api\\blueprints\\master_plan_pdf.py', reloading
+2026-03-30 00:29:13,610 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\api\\blueprints\\plans.py', reloading
+2026-03-30 00:29:13,610 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\api\\blueprints\\plans.py', reloading
+2026-03-30 00:29:13,611 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\api\\blueprints\\plans.py', reloading
+2026-03-30 00:29:13,611 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\api\\blueprints\\students.py', reloading
+2026-03-30 00:29:13,612 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\api\\blueprints\\students.py', reloading
+2026-03-30 00:29:13,613 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\api\\blueprints\\students.py', reloading
+2026-03-30 00:29:13,613 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\attendence_gen\\attend_gen.py', reloading
+2026-03-30 00:29:13,614 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\attendence_gen\\attend_gen.py', reloading
+2026-03-30 00:29:13,614 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\attendence_gen\\attend_gen.py', reloading
+2026-03-30 00:29:13,615 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\core\\algorithm\\seating.py', reloading
+2026-03-30 00:29:13,615 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\core\\algorithm\\seating.py', reloading
+2026-03-30 00:29:13,617 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\core\\algorithm\\seating.py', reloading
+2026-03-30 00:29:13,617 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\core\\algorithm\\seating.py', reloading
+2026-03-30 00:29:13,618 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\core\\cache\\cache_manager.py', reloading
+2026-03-30 00:29:13,618 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\core\\cache\\cache_manager.py', reloading
+2026-03-30 00:29:13,619 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\core\\cache\\cache_manager.py', reloading
+2026-03-30 00:29:13,619 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\core\\models\\allocation.py', reloading
+2026-03-30 00:29:13,620 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\core\\models\\allocation.py', reloading
+2026-03-30 00:29:13,621 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\core\\models\\allocation.py', reloading
+2026-03-30 00:29:13,621 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\database\\queries\\student_queries.py', reloading
+2026-03-30 00:29:13,622 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\database\\queries\\student_queries.py', reloading
+2026-03-30 00:29:13,622 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\database\\queries\\student_queries.py', reloading
+2026-03-30 00:29:13,623 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\database\\schema.py', reloading
+2026-03-30 00:29:13,624 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\database\\schema.py', reloading
+2026-03-30 00:29:13,624 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\database\\schema.py', reloading
+2026-03-30 00:29:13,625 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\database\\schema.py', reloading
+2026-03-30 00:29:13,625 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\pdf_gen\\pdf_generation.py', reloading
+2026-03-30 00:29:13,627 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\pdf_gen\\pdf_generation.py', reloading
+2026-03-30 00:29:13,627 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\pdf_gen\\pdf_generation.py', reloading
+2026-03-30 00:29:13,629 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\services\\cloud_sync_service.py', reloading
+2026-03-30 00:29:13,630 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\services\\cloud_sync_service.py', reloading
+2026-03-30 00:29:13,630 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\algo\\services\\cloud_sync_service.py', reloading
+2026-03-30 00:29:13,634 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\exam-seat-locator\\app.py', reloading
+2026-03-30 00:29:13,636 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\exam-seat-locator\\app.py', reloading
+2026-03-30 00:29:13,636 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\exam-seat-locator\\app.py', reloading
+2026-03-30 00:29:13,637 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\exam-seat-locator\\app.py', reloading
+2026-03-30 00:29:13,638 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\exam-seat-locator\\core\\cleanup.py', reloading
+2026-03-30 00:29:13,638 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\exam-seat-locator\\core\\cleanup.py', reloading
+2026-03-30 00:29:13,639 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\exam-seat-locator\\core\\cleanup.py', reloading
+2026-03-30 00:29:13,640 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\exam-seat-locator\\core\\cleanup.py', reloading
+2026-03-30 00:29:13,640 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\exam-seat-locator\\core\\cloud_sync.py', reloading
+2026-03-30 00:29:13,641 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\exam-seat-locator\\core\\cloud_sync.py', reloading
+2026-03-30 00:29:13,642 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\exam-seat-locator\\core\\cloud_sync.py', reloading
+2026-03-30 00:29:13,642 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\start_sync.py', reloading
+2026-03-30 00:29:13,643 - werkzeug - INFO -  * Detected change in 'C:\\Users\\nagar\\Desktop\\progress\\projects\\seat-allocation-sys\\start_sync.py', reloading
+2026-03-30 00:29:14,450 - werkzeug - INFO -  * Restarting with watchdog (windowsapi)
+2026-03-30 10:46:12,473 - algo.main - INFO - Initializing Modular Flask Application...
+2026-03-30 10:46:12,479 - algo.main - WARNING - ⚠️  Flask-Limiter not installed. Rate limiting disabled.
+2026-03-30 10:46:12,480 - algo.database.schema - INFO - 🔧 Initializing database...
+2026-03-30 10:46:12,498 - algo.database.schema - INFO - ✅ Database initialized successfully at C:\Users\nagar\Desktop\progress\projects\seat-allocation-sys\demo.db
+2026-03-30 10:46:12,499 - algo.database.schema - INFO - 📊 Database stats: 4 classrooms, 603 students, 0 active sessions
+2026-03-30 10:46:12,533 - algo.scripts.clean_old_data - INFO - Cleanup scheduler started (runs every 20 days)
+2026-03-30 10:46:12,533 - algo.scripts.clean_old_data - INFO - Data cleanup scheduler registered.
+2026-03-30 10:46:12,533 - algo.scripts.clean_old_data - INFO - === Data cleanup started ===
+2026-03-30 10:46:12,641 - algo.scripts.clean_old_data - INFO - === Cleanup complete: 0 DB rows removed, 0 cache files, 0 temp files ===
+2026-03-30 10:46:12,782 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://10.157.179.15:5000
+2026-03-30 10:46:12,782 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-03-30 10:46:12,823 - werkzeug - INFO -  * Restarting with watchdog (windowsapi)
+2026-03-30 10:46:17,529 - algo.main - INFO - Initializing Modular Flask Application...
+2026-03-30 10:46:17,532 - algo.main - WARNING - ⚠️  Flask-Limiter not installed. Rate limiting disabled.
+2026-03-30 10:46:17,562 - algo.database.schema - INFO - 🔧 Initializing database...
+2026-03-30 10:46:17,571 - algo.database.schema - INFO - ✅ Database initialized successfully at C:\Users\nagar\Desktop\progress\projects\seat-allocation-sys\demo.db
+2026-03-30 10:46:17,572 - algo.database.schema - INFO - 📊 Database stats: 4 classrooms, 603 students, 0 active sessions
+2026-03-30 10:46:17,591 - algo.scripts.clean_old_data - INFO - Cleanup scheduler started (runs every 20 days)
+2026-03-30 10:46:17,591 - algo.scripts.clean_old_data - INFO - Data cleanup scheduler registered.
+2026-03-30 10:46:17,592 - algo.scripts.clean_old_data - INFO - === Data cleanup started ===
+2026-03-30 10:46:17,693 - werkzeug - WARNING -  * Debugger is active!
+2026-03-30 10:46:17,721 - werkzeug - INFO -  * Debugger PIN: 107-466-500
+2026-03-30 10:46:17,744 - algo.scripts.clean_old_data - INFO - === Cleanup complete: 0 DB rows removed, 0 cache files, 0 temp files ===
+2026-03-30 10:47:23,367 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:47:23] "[31m[1mGET /api/sessions/active HTTP/1.1[0m" 401 -
+2026-03-30 10:47:53,278 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:47:53] "[31m[1mGET /api/sessions/active HTTP/1.1[0m" 401 -
+2026-03-30 10:48:02,209 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:48:02] "[31m[1mGET /api/sessions/active HTTP/1.1[0m" 401 -
+2026-03-30 10:48:04,038 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:48:04] "[31m[1mGET /api/sessions/active HTTP/1.1[0m" 401 -
+2026-03-30 10:49:04,152 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:49:04] "[31m[1mGET /api/sessions/active HTTP/1.1[0m" 401 -
+2026-03-30 10:49:22,098 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:49:22] "[31m[1mGET /api/sessions/active HTTP/1.1[0m" 401 -
+2026-03-30 10:49:29,522 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:49:29] "[31m[1mGET /api/sessions/active HTTP/1.1[0m" 401 -
+2026-03-30 10:49:30,831 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:49:30] "[31m[1mGET /api/sessions/active HTTP/1.1[0m" 401 -
+2026-03-30 10:50:09,935 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:50:09] "[31m[1mGET /api/sessions/active HTTP/1.1[0m" 401 -
+2026-03-30 10:51:16,425 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:51:16] "POST /api/auth/google HTTP/1.1" 200 -
+2026-03-30 10:51:16,503 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:51:16] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 10:51:17,387 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:51:17] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 10:51:17,629 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:51:17] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 10:51:17,688 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:51:17] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 10:51:17,758 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:51:17] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 10:51:17,767 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:51:17] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 10:51:18,009 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:51:18] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 10:51:53,989 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:51:53] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 10:51:54,039 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:51:54] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 10:51:54,532 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:51:54] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 10:51:54,619 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:51:54] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 10:51:54,667 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:51:54] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 10:51:54,888 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:51:54] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 10:51:54,928 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:51:54] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 10:51:54,992 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:51:54] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 10:52:05,923 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:52:05] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 10:52:05,962 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:52:05] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 10:52:05,971 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:52:05] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 10:52:06,068 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:52:06] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 10:52:06,102 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:52:06] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 10:52:06,117 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:52:06] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 10:52:08,291 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:52:08] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 10:52:08,323 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:52:08] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 10:52:08,833 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:52:08] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 10:52:08,876 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:52:08] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 10:52:08,883 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:52:08] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 10:52:08,947 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:52:08] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 10:52:09,254 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:52:09] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 10:52:09,315 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:52:09] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 10:53:09,561 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:53:09] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 10:53:09,591 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:53:09] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 10:53:09,619 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:53:09] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 10:54:09,245 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:54:09] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 10:54:09,556 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:54:09] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 10:54:09,620 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:54:09] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 10:54:53,458 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:54:53] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 10:54:53,471 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:54:53] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 10:54:53,555 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:54:53] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 10:54:58,286 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:54:58] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 10:54:58,300 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:54:58] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 10:54:58,323 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:54:58] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 10:56:02,351 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:56:02] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 10:56:02,520 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:56:02] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 10:56:02,565 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:56:02] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 10:56:46,315 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:56:46] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 10:56:46,331 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:56:46] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 10:56:46,389 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:56:46] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 10:57:48,400 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:57:48] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 10:57:48,498 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:57:48] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 10:57:48,517 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:57:48] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 10:58:47,244 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:58:47] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 10:58:47,596 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:58:47] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 10:58:47,612 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:58:47] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 10:59:21,174 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:59:21] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 10:59:21,519 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:59:21] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 10:59:21,848 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:59:21] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 10:59:21,873 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:59:21] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 10:59:21,887 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:59:21] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 10:59:37,022 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:59:37] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 10:59:37,089 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:59:37] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 10:59:37,592 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:59:37] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 10:59:37,627 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:59:37] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 10:59:37,891 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:59:37] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 10:59:48,516 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:59:48] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 10:59:48,580 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:59:48] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 10:59:48,620 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:59:48] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 10:59:50,920 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:59:50] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 10:59:50,968 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:59:50] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 10:59:51,403 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:59:51] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 10:59:51,445 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:59:51] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 10:59:51,476 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 10:59:51] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 11:00:52,596 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:00:52] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 11:00:52,649 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:00:52] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 11:00:52,672 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:00:52] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 11:01:45,292 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:01:45] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 11:01:45,336 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:01:45] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 11:01:45,631 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:01:45] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 11:01:45,690 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:01:45] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 11:01:45,724 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:01:45] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 11:01:46,000 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:01:45] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 11:02:46,741 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:02:46] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 11:02:46,806 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:02:46] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 11:02:46,830 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:02:46] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 11:02:57,291 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:02:57] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 11:02:57,356 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:02:57] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 11:02:57,731 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:02:57] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 11:03:02,302 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:03:02] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 11:03:02,327 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:03:02] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 11:03:02,783 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:03:02] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 11:04:03,559 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:04:03] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 11:04:03,622 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:04:03] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 11:04:03,859 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:04:03] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 11:05:03,265 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:05:03] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 11:05:03,579 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:05:03] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 11:05:04,009 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:05:04] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 11:05:34,980 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:05:34] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 11:05:35,001 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:05:35] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 11:05:35,673 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:05:35] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 11:05:35,730 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:05:35] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 11:05:35,800 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:05:35] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 11:05:48,162 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:05:48] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 11:05:48,227 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:05:48] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 11:05:48,726 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:05:48] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 11:05:48,775 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:05:48] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 11:05:48,920 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:05:48] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 11:06:00,191 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:00] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 11:06:00,262 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:00] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 11:06:00,323 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:00] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 11:06:02,213 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:02] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 11:06:02,255 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:02] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 11:06:02,802 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:02] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 11:06:02,836 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:02] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 11:06:02,951 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:02] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 11:06:16,165 - algo.api.blueprints.plans - INFO - 📋 Retrieved 0 recent plans for user 4
+2026-03-30 11:06:16,195 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:16] "GET /api/plans/recent HTTP/1.1" 200 -
+2026-03-30 11:06:16,242 - algo.api.blueprints.plans - INFO - 📋 Retrieved 0 recent plans for user 4
+2026-03-30 11:06:16,261 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:16] "GET /api/plans/recent HTTP/1.1" 200 -
+2026-03-30 11:06:28,793 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:28] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 11:06:28,859 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:28] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 11:06:29,323 - algo.api.blueprints.plans - INFO - 📋 Retrieved 0 recent plans for user 4
+2026-03-30 11:06:29,349 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:29] "GET /api/plans/recent HTTP/1.1" 200 -
+2026-03-30 11:06:29,384 - algo.api.blueprints.plans - INFO - 📋 Retrieved 0 recent plans for user 4
+2026-03-30 11:06:29,403 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:29] "GET /api/plans/recent HTTP/1.1" 200 -
+2026-03-30 11:06:39,476 - algo.api.blueprints.plans - INFO - 📋 Retrieved 0 recent plans for user 4
+2026-03-30 11:06:39,521 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:39] "GET /api/plans/recent HTTP/1.1" 200 -
+2026-03-30 11:06:39,565 - algo.api.blueprints.plans - INFO - 📋 Retrieved 0 recent plans for user 4
+2026-03-30 11:06:39,593 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:39] "GET /api/plans/recent HTTP/1.1" 200 -
+2026-03-30 11:06:41,623 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:41] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 11:06:41,660 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:41] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 11:06:42,302 - algo.api.blueprints.plans - INFO - 📋 Retrieved 0 recent plans for user 4
+2026-03-30 11:06:42,359 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:42] "GET /api/plans/recent HTTP/1.1" 200 -
+2026-03-30 11:06:42,397 - algo.api.blueprints.plans - INFO - 📋 Retrieved 0 recent plans for user 4
+2026-03-30 11:06:42,417 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:42] "GET /api/plans/recent HTTP/1.1" 200 -
+2026-03-30 11:06:45,736 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:45] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 11:06:45,760 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:45] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 11:06:46,172 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:46] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 11:06:57,378 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:57] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 11:06:57,424 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:57] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 11:06:57,751 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:57] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 11:06:57,764 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:57] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 11:06:57,883 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:06:57] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 11:07:08,929 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:07:08] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 11:07:09,005 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:07:09] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 11:07:09,090 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:07:09] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 11:07:10,922 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:07:10] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 11:07:10,965 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:07:10] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 11:07:11,499 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:07:11] "GET /api/dashboard/stats HTTP/1.1" 200 -
+2026-03-30 11:07:11,540 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:07:11] "GET /api/dashboard/session-info HTTP/1.1" 200 -
+2026-03-30 11:07:11,667 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:07:11] "GET /api/dashboard/activity?limit=10 HTTP/1.1" 200 -
+2026-03-30 11:07:33,549 - algo.api.blueprints.plans - INFO - 📋 Retrieved 0 recent plans for user 4
+2026-03-30 11:07:33,587 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:07:33] "GET /api/plans/recent HTTP/1.1" 200 -
+2026-03-30 11:07:33,761 - algo.api.blueprints.plans - INFO - 📋 Retrieved 0 recent plans for user 4
+2026-03-30 11:07:33,780 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:07:33] "GET /api/plans/recent HTTP/1.1" 200 -
+2026-03-30 11:07:54,646 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:07:54] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 11:07:54,713 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:07:54] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 11:07:55,178 - algo.api.blueprints.plans - INFO - 📋 Retrieved 0 recent plans for user 4
+2026-03-30 11:07:55,203 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:07:55] "GET /api/plans/recent HTTP/1.1" 200 -
+2026-03-30 11:07:55,258 - algo.api.blueprints.plans - INFO - 📋 Retrieved 0 recent plans for user 4
+2026-03-30 11:07:55,277 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:07:55] "GET /api/plans/recent HTTP/1.1" 200 -
+2026-03-30 11:08:05,542 - algo.api.blueprints.plans - INFO - 📋 Retrieved 0 recent plans for user 4
+2026-03-30 11:08:05,564 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:08:05] "GET /api/plans/recent HTTP/1.1" 200 -
+2026-03-30 11:08:05,607 - algo.api.blueprints.plans - INFO - 📋 Retrieved 0 recent plans for user 4
+2026-03-30 11:08:05,627 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:08:05] "GET /api/plans/recent HTTP/1.1" 200 -
+2026-03-30 11:08:07,714 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:08:07] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 11:08:07,752 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:08:07] "GET /api/sessions/active HTTP/1.1" 200 -
+2026-03-30 11:08:08,357 - algo.api.blueprints.plans - INFO - 📋 Retrieved 0 recent plans for user 4
+2026-03-30 11:08:08,380 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:08:08] "GET /api/plans/recent HTTP/1.1" 200 -
+2026-03-30 11:08:08,428 - algo.api.blueprints.plans - INFO - 📋 Retrieved 0 recent plans for user 4
+2026-03-30 11:08:08,449 - werkzeug - INFO - 127.0.0.1 - - [30/Mar/2026 11:08:08] "GET /api/plans/recent HTTP/1.1" 200 -

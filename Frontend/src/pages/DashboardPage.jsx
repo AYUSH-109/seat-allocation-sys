@@ -1,12 +1,10 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Users, 
   Layout, 
   MapPin, 
-  Download, 
   Upload, 
-  CheckCircle,
   ArrowUpRight,
   ArrowDownRight,
   Terminal,
@@ -15,54 +13,83 @@ import {
   RefreshCw,
   Loader2,
   Calendar,
-  Clock,
   Activity,
-  FileText,
-  MoreHorizontal
+  FileText
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getToken } from '../utils/tokenStorage';
 import SplitText from '../components/SplitText';
 
+const DEFAULT_STATS = [
+  { label: 'Total Students', value: 0, change: 0, icon: Users, color: 'text-orange-500 dark:text-orange-400' },
+  { label: 'Classrooms', value: 0, change: 0, icon: Layout, color: 'text-amber-500 dark:text-amber-400' },
+  { label: 'Allocated Seats', value: 0, change: 0, icon: MapPin, color: 'text-orange-600 dark:text-orange-500' },
+  { label: 'Completed Plans', value: 0, change: 0, icon: FileText, color: 'text-amber-600 dark:text-amber-500' }
+];
+
+const QUICK_ACTIONS = [
+  { label: 'Create Plan', desc: 'Start new allocation', page: 'create-plan', icon: Upload, bgColor: 'bg-orange-500' },
+  { label: 'Database', desc: 'Manage records', page: 'database', icon: Database, bgColor: 'bg-orange-600' },
+  { label: 'Templates', desc: 'Edit PDF layout', page: 'template-editor', icon: Layout, bgColor: 'bg-amber-500' },
+  { label: 'Classrooms', desc: 'Room layouts', page: 'classroom', icon: MapPin, bgColor: 'bg-orange-500' }
+];
+
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good Morning';
+  if (hour < 17) return 'Good Afternoon';
+  return 'Good Evening';
+};
+
+const getActivityIcon = (type) => {
+  switch (type) {
+    case 'success': return '✓';
+    case 'warning': return '⚠';
+    case 'process': return '⚙';
+    case 'info': return 'ℹ';
+    default: return '>';
+  }
+};
+
 // StatCard Component with counter animation
-const StatCard = ({ stat, index, loading }) => {
+const StatCard = memo(({ stat, index, loading }) => {
   const [count, setCount] = useState(0);
-  const [isAnimating, setIsAnimating] = useState(true);
 
   useEffect(() => {
     if (loading) {
-      setCount('--');
+      setCount('0');
       return;
     }
 
     const duration = 1500;
-    const steps = 60;
-    const interval = duration / steps;
     const targetValue = parseInt(String(stat.value).replace(/,/g, ''));
     
     if (isNaN(targetValue)) {
       setCount(stat.value);
-      setIsAnimating(false);
       return;
     }
 
-    let current = 0;
-    const timer = setInterval(() => {
-      current += targetValue / steps;
-      if (current >= targetValue) {
-        current = targetValue;
-        clearInterval(timer);
-        setIsAnimating(false);
-      }
-      setCount(Math.floor(current).toLocaleString());
-    }, interval);
+    let rafId;
+    const start = performance.now();
 
-    return () => clearInterval(timer);
+    const animate = (now) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const nextValue = Math.floor(targetValue * progress).toLocaleString();
+
+      setCount((prev) => (prev === nextValue ? prev : nextValue));
+
+      if (progress < 1) {
+        rafId = requestAnimationFrame(animate);
+      }
+    };
+
+    rafId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(rafId);
   }, [stat.value, loading]);
 
   const cardStyle = {
     opacity: 0,
-    y: 20,
     animation: `fadeInUp 0.5s ease-out ${index * 0.1}s forwards`
   };
 
@@ -116,7 +143,7 @@ const StatCard = ({ stat, index, loading }) => {
       </div>
     </div>
   );
-};
+});
 
 const DashboardPage = () => {
   const { user } = useAuth();
@@ -125,7 +152,7 @@ const DashboardPage = () => {
   // Dynamic state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [stats, setStats] = useState([]);
+  const [stats, setStats] = useState(DEFAULT_STATS);
   const [activityLog, setActivityLog] = useState([]);
   const [sessionInfo, setSessionInfo] = useState({
     currentSession: 'Loading...',
@@ -139,13 +166,10 @@ const DashboardPage = () => {
   const [downloadStatus, setDownloadStatus] = useState('');
   const [downloading, setDownloading] = useState(false);
 
-  // Get greeting based on time of day
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
-  };
+  const greetingText = useMemo(
+    () => `${getGreeting()},\n${user?.name || 'Administrator'}`,
+    [user?.name]
+  );
 
   // Fetch dashboard stats
   const fetchStats = useCallback(async () => {
@@ -197,12 +221,7 @@ const DashboardPage = () => {
     } catch (err) {
       console.error('Stats fetch error:', err);
       // Set default stats on error
-      setStats([
-        { label: 'Total Students', value: 0, change: 0, icon: Users, color: 'text-orange-500 dark:text-orange-400' },
-        { label: 'Classrooms', value: 0, change: 0, icon: Layout, color: 'text-amber-500 dark:text-amber-400' },
-        { label: 'Allocated Seats', value: 0, change: 0, icon: MapPin, color: 'text-orange-600 dark:text-orange-500' },
-        { label: 'Completed Plans', value: 0, change: 0, icon: FileText, color: 'text-amber-600 dark:text-amber-500' }
-      ]);
+      setStats(DEFAULT_STATS);
     }
   }, []);
 
@@ -279,53 +298,41 @@ const DashboardPage = () => {
     try {
       await Promise.all([
         fetchStats(),
-        fetchActivity(),
         fetchSessionInfo()
       ]);
+
+      setLoading(false);
       setLastRefresh(new Date());
+
+      // Defer non-critical activity log fetch to reduce initial dashboard work
+      fetchActivity();
     } catch (err) {
       setError(err.message);
-    } finally {
       setLoading(false);
     }
   }, [fetchStats, fetchActivity, fetchSessionInfo]);
 
   // Manual refresh
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchDashboardData();
     setRefreshing(false);
-  };
-
-  // Initial load
-  useEffect(() => {
-    fetchDashboardData();
-    
-    // Auto-refresh every 60 seconds
-    const interval = setInterval(fetchDashboardData, 60000);
-    return () => clearInterval(interval);
   }, [fetchDashboardData]);
 
-  // Re-fetch when user changes (account switch) - clears stale data first
+  // Load + auto refresh based on logged-in user identity
   const userIdentity = user?.email || user?.id;
   useEffect(() => {
-    if (userIdentity) {
-      // Clear stale data from previous user before fetching new data
-      setStats([]);
-      setActivityLog([]);
-      setSessionInfo({ currentSession: 'Loading...', nextExam: null });
-      setError(null);
-      fetchDashboardData();
-    }
-  }, [userIdentity]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!userIdentity) return undefined;
 
-  // Quick actions config - matching CreatePlan style
-  const quickActions = [
-    { label: 'Create Plan', desc: 'Start new allocation', page: 'create-plan', icon: Upload, bgColor: 'bg-orange-500' },
-    { label: 'Database', desc: 'Manage records', page: 'database', icon: Database, bgColor: 'bg-orange-600' },
-    { label: 'Templates', desc: 'Edit PDF layout', page: 'template-editor', icon: Layout, bgColor: 'bg-amber-500' },
-    { label: 'Classrooms', desc: 'Room layouts', page: 'classroom', icon: MapPin, bgColor: 'bg-orange-500' }
-  ];
+    setStats(DEFAULT_STATS);
+    setActivityLog([]);
+    setSessionInfo({ currentSession: 'Loading...', nextExam: null });
+    setError(null);
+    fetchDashboardData();
+
+    const interval = setInterval(fetchDashboardData, 60000);
+    return () => clearInterval(interval);
+  }, [userIdentity, fetchDashboardData]);
 
   // Handle download
   const handleDownload = async () => {
@@ -352,17 +359,6 @@ const DashboardPage = () => {
       setDownloadStatus('Failed to download report');
     } finally {
       setDownloading(false);
-    }
-  };
-
-  // Get activity icon
-  const getActivityIcon = (type) => {
-    switch (type) {
-      case 'success': return '✓';
-      case 'warning': return '⚠';
-      case 'process': return '⚙';
-      case 'info': return 'ℹ';
-      default: return '>';
     }
   };
 
@@ -394,7 +390,7 @@ const DashboardPage = () => {
             </div>
             
             <SplitText
-              text={`${getGreeting()},\n${user?.name || 'Administrator'}`}
+              text={greetingText}
               className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 via-gray-700 to-gray-500 dark:from-gray-100 dark:via-gray-300 dark:to-gray-500 bg-clip-text text-transparent"
               delay={45}
               duration={0.6}
@@ -403,11 +399,9 @@ const DashboardPage = () => {
             />
             
             {/* Last refresh time */}
-            {lastRefresh && (
-              <p className="text-xs text-gray-500 mt-2 font-mono">
-                Last updated: {lastRefresh.toLocaleTimeString()}
-              </p>
-            )}
+            <p className={`text-xs text-gray-500 mt-2 font-mono min-h-[1rem] ${lastRefresh ? '' : 'opacity-0'}`}>
+              Last updated: {lastRefresh ? lastRefresh.toLocaleTimeString() : '--:--:--'}
+            </p>
           </div>
           
           <div className="flex gap-4">
@@ -420,7 +414,7 @@ const DashboardPage = () => {
             <div className="w-px bg-gray-200 dark:bg-gray-700 h-12 hidden md:block"></div>
             <div className="text-right">
               <div className="micro-label mb-1">Next Exam</div>
-              <div className="font-mono text-xl text-orange-600 dark:text-orange-400">
+              <div className="font-mono text-xl text-orange-600 dark:text-orange-400 min-h-[1.75rem]">
                 {sessionInfo.nextExam ? (
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
@@ -462,12 +456,15 @@ const DashboardPage = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="glass-card bg-white dark:bg-gray-900 p-6 border-2 border-gray-200 dark:border-gray-700 rounded-2xl">
+        <div
+          className="glass-card bg-white dark:bg-gray-900 p-6 border-2 border-gray-200 dark:border-gray-700 rounded-2xl"
+          style={{ contentVisibility: 'auto', containIntrinsicSize: '280px' }}
+        >
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-6">Quick Actions</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {quickActions.map((action, index) => (
+            {QUICK_ACTIONS.map((action) => (
               <button
-                key={index}
+                key={action.page}
                 onClick={() => action.page === 'download-report' ? handleDownload() : navigate(`/${action.page}`)}
                 className="glass-card flex flex-col items-center gap-3 p-6 border-2 border-gray-200 dark:border-gray-700 rounded-2xl hover:border-orange-500 dark:hover:border-orange-400 transition-all duration-300 bg-white dark:bg-gray-800 group"
               >
@@ -484,7 +481,10 @@ const DashboardPage = () => {
         </div>
 
         {/* Activity Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
+        <div
+          className="grid grid-cols-1 lg:grid-cols-1 gap-6"
+          style={{ contentVisibility: 'auto', containIntrinsicSize: '500px' }}
+        >
           
           {/* Terminal Log */}
           <div className="glass-card bg-white dark:bg-gray-800 p-6 border-2 border-gray-200 dark:border-gray-700 rounded-2xl flex flex-col min-h-[400px]">
