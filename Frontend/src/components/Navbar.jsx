@@ -97,7 +97,7 @@ const Navbar = () => {
           {/* Navigation Links */}
           {user && (
             <PillNav
-              initialLoadAnimation
+              initialLoadAnimation={false}
               className="ml-2"
               items={pillItems}
               activeValue={location.pathname}

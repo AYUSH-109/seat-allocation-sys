@@ -54,10 +54,7 @@ const UploadPage = ({ showToast }) => {
       
       // Force refresh session status from server
       await updateSession();
-      
-      // Small delay to ensure state is settled
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       setPageReady(true);
     };
     
@@ -118,7 +115,6 @@ const UploadPage = ({ showToast }) => {
       const reinit = async () => {
         clearCompletedSession?.();
         await updateSession();
-        await new Promise(resolve => setTimeout(resolve, 100));
         setPageReady(true);
       };
       reinit();
@@ -329,13 +325,24 @@ const UploadPage = ({ showToast }) => {
   // ============================================================================
   if (!pageReady || sessionLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-[#050505] flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="relative w-16 h-16 mx-auto">
-            <div className="absolute inset-0 border-4 border-orange-200 dark:border-orange-900 rounded-full"></div>
-            <div className="absolute inset-0 border-4 border-transparent border-t-orange-500 rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-gray-50 dark:bg-[#050505] py-8 px-4 transition-colors duration-300">
+        <div className="max-w-5xl mx-auto space-y-8">
+          <div className="h-[84px] rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900" />
+
+          <div className="pb-6 border-b border-gray-200 dark:border-gray-800 space-y-3">
+            <div className="h-4 w-32 rounded bg-orange-200/60 dark:bg-orange-500/20" />
+            <div className="h-12 w-72 rounded bg-gray-200 dark:bg-gray-800" />
+            <div className="h-5 w-64 rounded bg-gray-200 dark:bg-gray-800" />
           </div>
-          <p className="text-gray-600 dark:text-gray-400 font-medium">Loading...</p>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="space-y-6">
+              <div className="h-[400px] rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900" />
+              <div className="h-[180px] rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900" />
+              <div className="h-[320px] rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900" />
+            </div>
+            <div className="h-[660px] rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900" />
+          </div>
         </div>
       </div>
     );

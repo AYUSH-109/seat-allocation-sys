@@ -89,7 +89,9 @@ const RootLayout = ({ showToast }) => {
   return (
     <div className="min-h-screen flex flex-col bg-white dark:bg-[#050505] transition-colors duration-200">
       <SessionRecoveryHandler />
-      <Suspense fallback={null}>
+      <Suspense
+        fallback={<div className="sticky top-0 z-40 h-[96px]" aria-hidden="true" />}
+      >
         <Navbar />
       </Suspense>
       <main className="flex-1">
@@ -103,7 +105,7 @@ const RootLayout = ({ showToast }) => {
           <RouteOutletLayout showToast={showToast} />
         </Suspense>
       </main>
-      <Suspense fallback={null}>
+      <Suspense fallback={<div className="h-[170px]" aria-hidden="true" />}>
         <Footer />
       </Suspense>
     </div>
