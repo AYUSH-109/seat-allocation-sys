@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Trash2, Building2, Users, AlertCircle, Check } from 'lucide-react';
+import { X, Plus, Trash2, Building2, Users, AlertCircle, Check, Monitor } from 'lucide-react';
 
 /**
  * MajorRoomConfigurator Modal
@@ -141,6 +141,35 @@ function MajorRoomConfigurator({ isOpen, onClose, onSubmit, branches = {}, loadi
               </span>
             </div>
 
+            {/* Classroom Info Cards */}
+            {rooms.some(r => r.name || r.capacity) && (
+              <div className="space-y-4">
+                <label className="flex items-center gap-2 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest mb-3">
+                  <Monitor size={16} className="text-orange-500" />
+                  Classroom Info
+                </label>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="p-4 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-1">Total Rooms</p>
+                    <p className="text-2xl font-bold text-orange-400">{rooms.filter(r => r.name).length}</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-500 mt-1">configured</p>
+                  </div>
+                  <div className="p-4 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-1">Total Capacity</p>
+                    <p className="text-2xl font-bold text-blue-400">{totalCapacity}</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-500 mt-1">seats available</p>
+                  </div>
+                  <div className="p-4 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-1">Free Seats</p>
+                    <p className={`text-2xl font-bold ${totalCapacity - totalStudents >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {Math.max(0, totalCapacity - totalStudents)}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-500 mt-1">unallocated</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Room list */}
             <div className="space-y-4">
               {rooms.map((room, idx) => (
@@ -206,6 +235,32 @@ function MajorRoomConfigurator({ isOpen, onClose, onSubmit, branches = {}, loadi
                       })}
                     </div>
                   </div>
+
+                  {/* Batch Students Info */}
+                  {room.branches.length > 0 && (
+                    <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                      <label className="block text-xs text-gray-500 mb-2.5 font-medium">Batch Students Info</label>
+                      <div className="space-y-2">
+                        {room.branches.map(branchName => {
+                          const branchData = branches[branchName];
+                          const totalInBranch = branchData?.count || branchData?.length || 0;
+                          return (
+                            <div
+                              key={branchName}
+                              className="px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 text-xs font-mono"
+                            >
+                              <div className="flex justify-between items-center">
+                                <span className="font-bold text-gray-700 dark:text-gray-300">{branchName}</span>
+                                <span className="text-gray-600 dark:text-gray-400">
+                                  Total Students: <strong className="text-orange-400">{totalInBranch}</strong>
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

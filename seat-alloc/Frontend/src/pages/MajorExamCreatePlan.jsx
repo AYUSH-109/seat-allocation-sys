@@ -7,7 +7,7 @@ import {
   RefreshCw, Target, Users,
   Clock, X, ArrowLeftRight,
   Download, Building2, ChevronDown, ChevronRight,
-  FileEdit, ArrowRight, Save
+  FileEdit, ArrowRight, Save, CheckCircle2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SplitText from '../components/SplitText';
@@ -443,8 +443,14 @@ const MajorExamCreatePlan = ({ showToast }) => {
 
           <div className="flex gap-4 items-center">
             <div className="text-right">
-              <div className="text-xs text-gray-500 mb-1">Plans</div>
+              <div className="text-xs text-gray-500 mb-1">Total Plans</div>
               <div className="text-3xl font-black text-orange-600 dark:text-orange-400">{plans.length}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-xs text-gray-500 mb-1">Finalized</div>
+              <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400">
+                {plans.filter(p => p.status === 'FINALIZED').length}
+              </div>
             </div>
             <button
               onClick={() => navigate('/create-plan')}
@@ -455,6 +461,98 @@ const MajorExamCreatePlan = ({ showToast }) => {
               <ArrowLeftRight size={16} />
             </button>
           </div>
+        </div>
+
+        {/* ===== PROCESS STATUS BAR ===== */}
+        <div className="glass-card p-6 border-2 border-orange-500 dark:border-orange-400 rounded-2xl">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Upload Progress</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 font-mono">
+                {uploadResult ? `Plan: ${uploadResult.planId}` : 'No active upload'}
+              </p>
+            </div>
+            {uploadResult && (
+              <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-lg border bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20">
+                In Progress
+              </span>
+            )}
+            {!uploadResult && plans.length > 0 && (
+              <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-lg border bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+                Ready
+              </span>
+            )}
+          </div>
+
+          {/* Step-based process indicator */}
+          <div className="flex items-center gap-0 mb-4">
+            {[
+              { step: 1, label: 'Upload Excel', done: !!uploadResult || plans.length > 0, active: !uploadResult && plans.length === 0 },
+              { step: 2, label: 'Preview Data', done: showBranchPreview || plans.length > 0, active: showBranchPreview && !showRoomConfig },
+              { step: 3, label: 'Configure Rooms', done: plans.length > 0, active: showRoomConfig },
+              { step: 4, label: 'Finalized', done: plans.filter(p => p.status === 'FINALIZED').length > 0, active: false },
+            ].map((item, i, arr) => (
+              <React.Fragment key={i}>
+                <div className="flex flex-col items-center min-w-0">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border-2 transition-all duration-300 ${
+                    item.done
+                      ? 'bg-emerald-500 border-emerald-500 text-white'
+                      : item.active
+                      ? 'bg-orange-500 border-orange-500 text-white animate-pulse'
+                      : 'bg-gray-200 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-500'
+                  }`}>
+                    {item.done ? <CheckCircle2 size={14} /> : item.step}
+                  </div>
+                  <span className={`text-[10px] font-bold mt-1 text-center leading-tight hidden sm:block ${
+                    item.done ? 'text-emerald-600 dark:text-emerald-400' :
+                    item.active ? 'text-orange-500' : 'text-gray-400'
+                  }`}>{item.label}</span>
+                </div>
+                {i < arr.length - 1 && (
+                  <div className={`flex-1 h-0.5 mx-1 mb-4 transition-all duration-300 ${
+                    arr[i + 1].done || arr[i + 1].active ? 'bg-orange-500' : 'bg-gray-200 dark:bg-gray-700'
+                  }`} />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+
+          {/* Upload result stats / progress info */}
+          {uploadResult ? (
+            <div className="grid grid-cols-3 gap-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+              <div className="text-center p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                <div className="text-lg font-black text-orange-600 dark:text-orange-400">{uploadResult.totalStudents}</div>
+                <div className="text-xs text-gray-500">Total Students</div>
+              </div>
+              <div className="text-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="text-lg font-black text-blue-600 dark:text-blue-400">{uploadResult.branchNames.length}</div>
+                <div className="text-xs text-gray-500">Branches</div>
+              </div>
+              <div className="text-center p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                <div className="text-lg font-black text-purple-600 dark:text-purple-400">{uploadResult.planId}</div>
+                <div className="text-xs text-gray-500">Plan ID</div>
+              </div>
+            </div>
+          ) : plans.length > 0 ? (
+            <div className="grid grid-cols-3 gap-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+              <div className="text-center p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                <div className="text-lg font-black text-emerald-600 dark:text-emerald-400">{plans.reduce((s, p) => s + (p.total_students || 0), 0)}</div>
+                <div className="text-xs text-gray-500">Total Students</div>
+              </div>
+              <div className="text-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="text-lg font-black text-blue-600 dark:text-blue-400">{plans.reduce((s, p) => s + (p.room_count || 0), 0)}</div>
+                <div className="text-xs text-gray-500">Total Rooms</div>
+              </div>
+              <div className="text-center p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                <div className="text-lg font-black text-amber-600 dark:text-amber-400">{plans.filter(p => p.status === 'FINALIZED').length}</div>
+                <div className="text-xs text-gray-500">Finalized</div>
+              </div>
+            </div>
+          ) : (
+            <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center">Upload an Excel file to begin the process</p>
+            </div>
+          )}
         </div>
 
         {/* Action Cards */}
@@ -483,6 +581,55 @@ const MajorExamCreatePlan = ({ showToast }) => {
             </button>
           ))}
         </div>
+
+        {/* Process Status Card - Shows latest finalized plan */}
+        {plans.length > 0 && plans[0]?.status === 'FINALIZED' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-6 border-2 border-orange-500 dark:border-orange-400 rounded-2xl bg-white dark:bg-[#0a0a0a] shadow-lg"
+          >
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Process Status</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 font-mono">Latest: {plans[0].plan_id}</p>
+              </div>
+              <button
+                onClick={() => handleViewPlan(plans[0])}
+                className="px-3 py-2 bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 dark:text-orange-400 rounded-lg text-xs font-bold transition-colors"
+              >
+                View Plan
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div className="relative h-4 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                <motion.div 
+                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-orange-500 to-amber-500 flex items-center justify-end pr-2"
+                  animate={{ width: `${plans[0].total_students ? Math.round((plans[0].allocated_count / plans[0].total_students) * 100) : 0}%` }}
+                  transition={{ duration: 0.5 }}
+                >
+                  {plans[0].total_students ? Math.round((plans[0].allocated_count / plans[0].total_students) * 100) > 5 && (
+                    <span className="text-white text-xs font-bold">{Math.round((plans[0].allocated_count / plans[0].total_students) * 100)}%</span>
+                  ) : null}
+                </motion.div>
+              </div>
+              <div className="flex justify-between text-sm font-mono text-gray-600 dark:text-gray-400">
+                <span>{plans[0].allocated_count || 0} / {plans[0].total_students || 0} allocated</span>
+                <span>{(plans[0].total_students || 0) - (plans[0].allocated_count || 0)} remaining</span>
+              </div>
+              {plans[0].room_count > 0 && (
+                <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                  <p className="text-xs font-bold uppercase text-gray-500 mb-2">Configured Rooms:</p>
+                  <div className="flex gap-2 flex-wrap">
+                    <div className="px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-lg text-xs font-bold border border-blue-200 dark:border-blue-700">
+                      {plans[0].room_count} rooms
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
 
         {/* Upload Card */}
         <motion.div
@@ -536,75 +683,150 @@ const MajorExamCreatePlan = ({ showToast }) => {
           </div>
         )}
 
-        {/* Recent Plans */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-orange-400" />
-              Recent Plans
-            </h2>
-            <button onClick={fetchRecentPlans} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-              <RefreshCw className="w-4 h-4" />
-            </button>
+        {/* ===== RECENT PLANS ===== */}
+        <div className="glass-card p-8 border-2 border-gray-200 dark:border-gray-800 rounded-2xl">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <SplitText
+                text="Recent Plans"
+                className="text-2xl font-bold text-gray-900 dark:text-gray-100"
+                splitType="chars"
+                delay={20}
+              />
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Your latest major exam seating arrangements
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={fetchRecentPlans}
+                disabled={loading}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50"
+                title="Refresh plans"
+              >
+                <RefreshCw className={`w-4 h-4 text-orange-500 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+              <div className="flex items-center gap-2 text-xs font-mono text-orange-500 bg-orange-500/10 px-3 py-2 rounded-full border border-orange-500/20">
+                <Clock className="w-4 h-4" />
+                <span>{plans.length} Total</span>
+              </div>
+            </div>
           </div>
 
           {loading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="w-8 h-8 text-orange-400 animate-spin" />
+            <div className="text-center py-16">
+              <Loader2 className="w-12 h-12 mx-auto text-orange-500 animate-spin mb-4" />
+              <p className="text-gray-600 dark:text-gray-400 font-semibold">Loading recent plans...</p>
             </div>
           ) : plans.length === 0 ? (
-            <div className="text-center py-12 text-gray-500 dark:text-gray-600">
-              <Target className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p>No plans yet. Upload an Excel file to get started.</p>
+            <div className="text-center py-16 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800/50">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-700 mb-4">
+                <Target className="text-gray-400 dark:text-gray-500" size={32} />
+              </div>
+              <p className="text-gray-600 dark:text-gray-400 font-semibold text-lg mb-2">No plans created yet</p>
+              <p className="text-sm text-gray-500 dark:text-gray-500">Upload an Excel file above to get started with your first plan</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {plans.map((plan, idx) => (
-                <motion.div
-                  key={plan.plan_id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.05 }}
-                  className="p-5 bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 rounded-xl hover:border-orange-500/60 dark:hover:border-orange-700/50 transition-all duration-200 group cursor-pointer"
-                  onClick={() => handleViewPlan(plan)}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <p className="text-sm font-mono text-orange-400 font-bold">{plan.plan_id}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-600 mt-0.5">{formatDate(plan.created_at)}</p>
+            <div className="space-y-3">
+              {plans.map((plan, idx) => {
+                const isFinalized = plan.status === 'FINALIZED';
+                const progress = plan.total_students > 0
+                  ? Math.round((plan.allocated_count / plan.total_students) * 100)
+                  : 0;
+                return (
+                  <div
+                    key={plan.plan_id}
+                    className="group p-5 rounded-xl bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 transition-all duration-300 border-2 border-gray-200 dark:border-gray-700 hover:border-orange-500 dark:hover:border-orange-400 shadow-sm cursor-pointer"
+                    style={{ opacity: 0, animation: `fadeIn 0.3s ease-out ${idx * 0.05}s forwards` }}
+                    onClick={() => handleViewPlan(plan)}
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-4 flex-1 min-w-0">
+                        {/* Icon Badge */}
+                        <div className={`flex items-center justify-center w-12 h-12 rounded-lg ${
+                          isFinalized
+                            ? 'bg-gradient-to-br from-emerald-500 to-green-600'
+                            : 'bg-gradient-to-br from-amber-400 to-orange-500'
+                        } text-white font-bold text-lg shadow-md flex-shrink-0`}>
+                          {isFinalized ? <CheckCircle2 size={24} /> : <Building2 size={24} />}
+                        </div>
+
+                        {/* Plan Details */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3 mb-1 flex-wrap">
+                            <div className="font-bold text-gray-900 dark:text-white text-lg group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors truncate font-mono">
+                              {plan.plan_id}
+                            </div>
+                            <span className={`text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-lg border flex-shrink-0 ${
+                              isFinalized
+                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                                : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                            }`}>
+                              {plan.status}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-4 text-xs text-gray-600 dark:text-gray-400 flex-wrap">
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                              <span className="font-mono">{formatDate(plan.created_at)}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <Users className="w-3.5 h-3.5 flex-shrink-0" />
+                              <span className="font-mono">
+                                {plan.allocated_count || 0}/{plan.total_students || 0} students
+                              </span>
+                            </div>
+                            {(plan.room_count || 0) > 0 && (
+                              <div className="flex items-center gap-1.5">
+                                <Building2 className="w-3.5 h-3.5 flex-shrink-0" />
+                                <span className="font-mono">
+                                  {plan.room_count} lab{plan.room_count !== 1 ? 's' : ''}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Progress bar */}
+                          {plan.total_students > 0 && (
+                            <div className="mt-2">
+                              <div className="relative h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                <div
+                                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-orange-500 to-amber-500 transition-all duration-500"
+                                  style={{ width: `${progress}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Right side: actions */}
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        {plan.total_students > 0 && (
+                          <div className="text-right">
+                            <div className="text-xs text-gray-500 mb-0.5">Allocated</div>
+                            <div className="text-xl font-black text-orange-600 dark:text-orange-400">{progress}%</div>
+                          </div>
+                        )}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleViewPlan(plan); }}
+                            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5"
+                          >
+                            <Eye size={14} />
+                            View
+                          </button>
+                        </div>
+                        <ArrowRight
+                          className="text-gray-400 group-hover:text-orange-500 group-hover:translate-x-1 transition-all duration-300 opacity-50 group-hover:opacity-100"
+                          size={20}
+                        />
+                      </div>
                     </div>
-                    <span className={`px-2 py-1 rounded-lg text-xs font-bold ${
-                      plan.status === 'FINALIZED'
-                        ? 'bg-green-100 text-green-700 border border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800/50'
-                        : 'bg-yellow-100 text-yellow-700 border border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800/50'
-                    }`}>
-                      {plan.status}
-                    </span>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 mt-3">
-                    <div className="text-center p-2 bg-gray-100 dark:bg-gray-900/50 rounded-lg">
-                      <p className="text-lg font-bold text-orange-300">{plan.total_students || 0}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-600">Students</p>
-                    </div>
-                    <div className="text-center p-2 bg-gray-100 dark:bg-gray-900/50 rounded-lg">
-                      <p className="text-lg font-bold text-green-300">{plan.allocated_count || 0}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-600">Allocated</p>
-                    </div>
-                    <div className="text-center p-2 bg-gray-100 dark:bg-gray-900/50 rounded-lg">
-                      <p className="text-lg font-bold text-amber-300">{plan.room_count || 0}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-600">Rooms</p>
-                    </div>
-                  </div>
-                  <div className="mt-3">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleViewPlan(plan); }}
-                      className="w-full py-2 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1"
-                    >
-                      <Eye size={12} /> View Plan
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -636,22 +858,34 @@ const MajorExamCreatePlan = ({ showToast }) => {
               </div>
 
               <div className="p-6 space-y-4">
-                {/* Branch Cards */}
+                {/* Branch Cards — styled like batch info boxes */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {uploadResult.branchNames.map(branch => (
-                    <div key={branch} className="p-4 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 rounded-xl hover:border-orange-500/60 dark:hover:border-orange-700/50 transition-colors">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-lg font-bold text-orange-400">{branch}</h3>
+                    <div key={branch} className="p-4 bg-gray-50 dark:bg-gray-900/50 border-2 border-gray-200 dark:border-gray-800 rounded-xl hover:border-orange-500 dark:hover:border-orange-500 transition-all duration-200 group">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2.5 h-2.5 rounded-full bg-orange-500"></div>
+                          <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">{branch}</h3>
+                        </div>
                         <button
                           onClick={() => setPreviewBranch(branch)}
-                          className="p-2 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                          className="p-1.5 bg-gray-200 dark:bg-gray-800 hover:bg-orange-100 dark:hover:bg-orange-900/30 rounded-lg transition-colors"
                           title="Preview first 10 students"
                         >
-                          <Eye className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                          <Eye className="w-3.5 h-3.5 text-gray-600 dark:text-gray-400 group-hover:text-orange-500" />
                         </button>
                       </div>
-                      <p className="text-3xl font-bold text-gray-900 dark:text-white">{uploadResult.branchCounts[branch]}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-600">students</p>
+                      {/* Student count info boxes — similar to minor batch info */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="p-2 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 text-center">
+                          <div className="text-xl font-black text-gray-900 dark:text-white">{uploadResult.branchCounts[branch]}</div>
+                          <div className="text-[10px] font-mono text-gray-500 dark:text-gray-600 uppercase tracking-wide">Total Students</div>
+                        </div>
+                        <div className="p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800 text-center">
+                          <div className="text-xl font-black text-orange-600 dark:text-orange-400">{uploadResult.branchCounts[branch]}</div>
+                          <div className="text-[10px] font-mono text-orange-600 dark:text-orange-500 uppercase tracking-wide">Unallocated</div>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -976,6 +1210,10 @@ const MajorExamCreatePlan = ({ showToast }) => {
         @keyframes fadeInUp {
           from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
       `}</style>
     </div>
