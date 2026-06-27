@@ -83,7 +83,7 @@ python app.py
 ```bash
 cd algo
 pip install -r requirements.txt
-python main.py
+python app.py
 # → http://127.0.0.1:5000
 ```
 
@@ -92,7 +92,7 @@ python main.py
 ```bash
 cd Frontend
 npm install
-npm run dev
+npm start
 # → http://localhost:5173
 ```
 
